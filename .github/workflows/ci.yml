@@ -52,6 +52,12 @@ jobs:
       - name: MCP admission
         run: node dist/cli.js admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --fail-on high --sarif
 
+      - name: MCP gate
+        run: node dist/cli.js gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json --fail-on high --sarif
+
+      - name: Runtime attack graph
+        run: node dist/cli.js analyze-run --trace examples/traces/codex-session.jsonl --fail-on high --sarif
+
       - name: Evidence bundle
         run: node dist/cli.js attest-mcp --subject safe-docs && node dist/cli.js verify-attestation
 

@@ -28,6 +28,7 @@ The bundle records:
 Artifacts can include:
 
 - `mcp-admission.json`
+- `mcp-gate.json`
 - `mcp-inventory.json`
 - `mcp-scan.json`
 - `mcp-baseline-diff.json`

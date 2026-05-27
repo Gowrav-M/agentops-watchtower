@@ -6,6 +6,7 @@ Watchtower can export MCP and runtime attack graph findings as SARIF 2.1.0 for G
 npx agentops-watchtower scan-mcp mcp-tools.json --sarif
 npx agentops-watchtower inventory-mcp --sarif
 npx agentops-watchtower admit-mcp --descriptor mcp-tools.json --config .mcp.json --sarif
+npx agentops-watchtower gate-mcp --config .mcp.json --server github --descriptor mcp-tools.json --sarif
 npx agentops-watchtower analyze-run --trace trace.jsonl --sarif
 ```
 

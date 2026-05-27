@@ -18,6 +18,7 @@ import {
 } from "./core/files.js";
 import { importTraceFile } from "./core/importer.js";
 import { compareMcpBaseline, createMcpBaseline, readMcpBaselineFile } from "./core/mcpBaseline.js";
+import { createMcpGateReport } from "./core/mcpGate.js";
 import { discoverMcpConfigCandidates, explicitMcpConfigCandidates, inventoryMcpConfigFiles } from "./core/mcpInventory.js";
 import { scanMcpDescriptorFile, type McpScanOptions } from "./core/mcpScanner.js";
 import { exportOtelSpans } from "./core/otelExporter.js";
@@ -47,7 +48,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.7.0");
+    .version("0.8.0");
 
   program
     .command("init")
@@ -278,6 +279,86 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         throw new Error(summarizePolicyFailure(admission.findings, failOn));
       }
     });
+
+  program
+    .command("gate-mcp")
+    .requiredOption("-c, --config <config...>", "MCP client config file(s) to inventory before the gate decision.")
+    .option("-s, --server <server>", "MCP server name or full inventory id to gate. Required when the config has multiple servers.")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to scan before the gate decision.")
+    .option("-b, --baseline <baseline>", "Optional Watchtower MCP baseline file for drift checks.")
+    .option("--allow-review", "Allow a review decision to produce a dry-run launch plan after human approval.")
+    .option("--fail-on <severity>", "Exit non-zero when gate findings meet this severity.")
+    .option("--sarif", "Also write GitHub code scanning SARIF output.")
+    .description("Preflight an MCP server from local config and block unsafe launch plans.")
+    .action(
+      async (options: {
+        config: string[];
+        server?: string;
+        descriptor?: string;
+        baseline?: string;
+        allowReview?: boolean;
+        failOn?: string;
+        sarif?: boolean;
+      }) => {
+        const paths = await ensureWatchtowerDirs(ctx.cwd);
+        const watchtowerConfig = await loadWatchtowerConfig(ctx.cwd);
+        const inventory = await inventoryMcpConfigFiles(
+          explicitMcpConfigCandidates(options.config.map((configPath) => resolve(ctx.cwd, configPath)))
+        );
+        await writeJsonFile(paths.mcpInventoryJson, inventory);
+
+        let descriptorFindings: RiskFinding[] | undefined;
+        let baselineFindings: RiskFinding[] | undefined;
+        if (options.descriptor !== undefined) {
+          const descriptorPath = resolve(ctx.cwd, options.descriptor);
+          const descriptorScan = await scanMcpDescriptorFile(descriptorPath, watchtowerConfig.policy);
+          descriptorFindings = descriptorScan.findings;
+          await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), descriptorScan);
+
+          const baselinePath = options.baseline === undefined ? paths.mcpBaselineJson : resolve(ctx.cwd, options.baseline);
+          if (await fileExists(baselinePath)) {
+            const baseline = await readMcpBaselineFile(baselinePath);
+            const diff = compareMcpBaseline(baseline, descriptorScan.tools);
+            baselineFindings = diff.findings;
+            await writeJsonFile(paths.mcpBaselineDiffJson, diff);
+          }
+        } else if (options.baseline !== undefined) {
+          throw new Error("gate-mcp requires --descriptor when --baseline is provided.");
+        }
+
+        const gate = createMcpGateReport({
+          inventory,
+          ...(options.server === undefined ? {} : { serverName: options.server }),
+          ...(descriptorFindings === undefined ? {} : { descriptorFindings }),
+          ...(baselineFindings === undefined ? {} : { baselineFindings }),
+          allowReview: options.allowReview === true
+        });
+        await writeJsonFile(paths.mcpGateJson, gate);
+
+        if (options.sarif === true) {
+          await writeJsonFile(
+            paths.sarifJson,
+            exportSarif(gate.admission.findings, {
+              ...(options.config.length === 1 ? { sourceUri: sourceUri(ctx.cwd, resolve(ctx.cwd, options.config[0] ?? "")) } : {}),
+              invocationCommandLine: "agentops-watchtower gate-mcp --sarif"
+            })
+          );
+          ctx.stdout(`Wrote ${paths.sarifJson}`);
+        }
+
+        ctx.stdout(`Gate decision: ${gate.admission.decision}`);
+        ctx.stdout(`Launch mode: ${gate.launch.mode}`);
+        ctx.stdout(`Wrote ${paths.mcpGateJson}`);
+
+        const failOn = parseSeverityOption(options.failOn) ?? watchtowerConfig.policy.failOn;
+        if (shouldFailForFindings(gate.admission.findings, failOn)) {
+          throw new Error(summarizePolicyFailure(gate.admission.findings, failOn));
+        }
+        if (gate.launch.mode === "blocked") {
+          throw new Error(`MCP gate blocked launch: ${gate.launch.reason}`);
+        }
+      }
+    );
 
   program
     .command("attest-mcp")
@@ -572,6 +653,7 @@ async function existingEvidenceArtifacts(paths: ReturnType<typeof getWatchtowerP
     { name: "mcp-inventory", path: paths.mcpInventoryJson },
     { name: "mcp-scan", path: join(paths.reportsDir, "mcp-scan.json") },
     { name: "mcp-baseline-diff", path: paths.mcpBaselineDiffJson },
+    { name: "mcp-gate", path: paths.mcpGateJson },
     { name: "attack-graph", path: paths.attackGraphJson },
     { name: "watchtower-sarif", path: paths.sarifJson },
     { name: "watchtower-report", path: paths.reportJson }

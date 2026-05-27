@@ -186,6 +186,58 @@ describe("cli", () => {
     expect(admission).toContain("\"decision\": \"deny\"");
   });
 
+  it("gate-mcp writes an allow preflight decision for a selected safe server", async () => {
+    const cwd = await makeTempDir();
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(
+      [
+        "node",
+        "watchtower",
+        "gate-mcp",
+        "--config",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-client-config.json"),
+        "--server",
+        "safe-docs",
+        "--descriptor",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-tools.json"),
+        "--sarif"
+      ],
+      { from: "node" }
+    );
+
+    const gate = await readFile(join(cwd, ".watchtower", "reports", "mcp-gate.json"), "utf8");
+    expect(output.join("\n")).toContain("Gate decision: allow");
+    expect(gate).toContain("\"mode\": \"dry-run\"");
+  });
+
+  it("gate-mcp blocks a selected dangerous server", async () => {
+    const cwd = await makeTempDir();
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await expect(
+      cli.parseAsync(
+        [
+          "node",
+          "watchtower",
+          "gate-mcp",
+          "--config",
+          join(import.meta.dirname, "..", "examples", "mcp", "sample-client-config.json"),
+          "--server",
+          "review-this-installer",
+          "--fail-on",
+          "critical"
+        ],
+        { from: "node" }
+      )
+    ).rejects.toThrow(/Policy threshold failed/u);
+
+    const gate = await readFile(join(cwd, ".watchtower", "reports", "mcp-gate.json"), "utf8");
+    expect(gate).toContain("\"decision\": \"deny\"");
+    expect(gate).toContain("\"mode\": \"blocked\"");
+  });
+
   it("analyze-run writes an attack graph and fails policy for source-to-sink runtime chains", async () => {
     const cwd = await makeTempDir();
     const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });

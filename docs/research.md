@@ -56,6 +56,8 @@ v0.6 adds tamper-evident evidence bundles. This addresses the audit and non-repu
 
 v0.7 adds runtime attack graph analysis. This addresses a deeper gap surfaced by OWASP and Microsoft guidance: even if tools pass static review, an agent can combine a source and sink into a dangerous chain at runtime. Watchtower now flags source-to-sink paths, prompt-injected tool results, and blocked-action bypass patterns from local traces.
 
+v0.8 adds a selected-server MCP preflight gate. This starts the enforcement path without overbuilding a protocol proxy: one configured server is inventoried, checked against descriptor and baseline evidence, and turned into a blocked or dry-run launch plan.
+
 ## Source References
 
 - OpenTelemetry GenAI/MCP semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/
