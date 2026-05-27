@@ -56,8 +56,8 @@ agentops-watchtower inventory-mcp
 agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
 agentops-watchtower gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json
 agentops-watchtower agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --cyclonedx
-agentops-watchtower attest-mcp --subject safe-docs
-agentops-watchtower verify-attestation
+agentops-watchtower attest-mcp --subject safe-docs --private-key private.pem --key-id local-reviewer
+agentops-watchtower verify-attestation --public-key public.pem
 agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --sarif
 agentops-watchtower eval
 agentops-watchtower report --mcp examples/mcp/risky-tools.json --analyze
@@ -79,8 +79,8 @@ agentops-watchtower doctor
 | `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
 | `gate-mcp` | Preflights one configured MCP server and blocks unsafe launch plans. |
 | `agent-bom` | Exports an Agent Bill of Materials for MCP configs, servers, tools, and findings. |
-| `attest-mcp` | Creates a tamper-evident local evidence bundle from Watchtower reports. |
-| `verify-attestation` | Verifies evidence bundle integrity and artifact hashes. |
+| `attest-mcp` | Creates a tamper-evident local evidence bundle and can sign it with Ed25519. |
+| `verify-attestation` | Verifies evidence bundle integrity, artifact hashes, and optional signatures. |
 | `analyze-run` | Builds a runtime attack graph from agent tool-call traces. |
 | `eval` | Runs deterministic checks against imported agent runs. |
 | `report` | Generates Markdown, HTML, and JSON reports from local runs plus optional MCP and runtime findings. |
@@ -244,11 +244,11 @@ Create audit-ready evidence after admission:
 
 ```bash
 npx agentops-watchtower admit-mcp --descriptor mcp-tools.json --config .mcp.json --sarif
-npx agentops-watchtower attest-mcp --subject production-github-mcp
-npx agentops-watchtower verify-attestation
+npx agentops-watchtower attest-mcp --subject production-github-mcp --private-key private.pem --key-id security-reviewer
+npx agentops-watchtower verify-attestation --public-key public.pem
 ```
 
-The evidence bundle records artifact paths, byte sizes, SHA-256 hashes, admission decision, and a bundle-level integrity hash. If a report is modified after review, verification fails.
+The evidence bundle records artifact paths, byte sizes, SHA-256 hashes, admission decision, and a bundle-level integrity hash. When signed, it also records an Ed25519 signature with `keyId` and `signedAt`. If a report or signed bundle field is modified after review, verification fails.
 
 See [docs/evidence-bundles.md](docs/evidence-bundles.md).
 
@@ -347,14 +347,12 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v0.9: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, runtime attack graph analysis, tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v1.0: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.
 - MCP protocol proxy/wrapper mode.
-- Signed AgentBOM/evidence bundle flow.
 - GitHub Action summary comments and packaged action.
-- Optional key-backed signatures for evidence bundles.
 - Browser-based local report viewer.
 
 ## License

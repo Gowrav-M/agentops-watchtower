@@ -7,7 +7,7 @@ import { createAdmissionReport, type AdmissionCheck } from "./core/admission.js"
 import { createAgentBom, exportCycloneDxAgentBom, renderAgentBomMarkdown } from "./core/agentBom.js";
 import { analyzeRuns, type AttackGraphContext } from "./core/attackGraph.js";
 import { evaluateRuns } from "./core/evaluator.js";
-import { createEvidenceBundle, readAdmissionDecision, verifyEvidenceBundle, type EvidenceArtifactInput } from "./core/evidence.js";
+import { createEvidenceBundle, readAdmissionDecision, signEvidenceBundle, verifyEvidenceBundle, type EvidenceArtifactInput } from "./core/evidence.js";
 import {
   appendRunJsonl,
   ensureWatchtowerDirs,
@@ -49,7 +49,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.9.0");
+    .version("1.0.0");
 
   program
     .command("init")
@@ -407,8 +407,10 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .command("attest-mcp")
     .option("--subject <subject>", "Human-readable subject for the evidence bundle.")
+    .option("--private-key <privateKey>", "PEM Ed25519 private key path for signing the evidence bundle.")
+    .option("--key-id <keyId>", "Stable signing key id to embed in the evidence bundle signature.")
     .description("Create a tamper-evident evidence bundle from Watchtower MCP reports.")
-    .action(async (options: { subject?: string }) => {
+    .action(async (options: { subject?: string; privateKey?: string; keyId?: string }) => {
       const paths = await ensureWatchtowerDirs(ctx.cwd);
       const artifacts = await existingEvidenceArtifacts(paths);
       if (artifacts.length === 0) {
@@ -421,20 +423,33 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         ...(admissionDecision === undefined ? {} : { admissionDecision }),
         artifacts
       });
-      await writeJsonFile(paths.evidenceBundleJson, bundle);
+      const signedBundle =
+        options.privateKey === undefined
+          ? bundle
+          : signEvidenceBundle(bundle, {
+              privateKeyPem: await readFile(resolve(ctx.cwd, options.privateKey), "utf8"),
+              keyId: options.keyId ?? "local"
+            });
+      await writeJsonFile(paths.evidenceBundleJson, signedBundle);
       ctx.stdout(`Wrote evidence bundle to ${paths.evidenceBundleJson}`);
-      ctx.stdout(`Integrity hash: ${bundle.integrityHash}`);
+      ctx.stdout(`Integrity hash: ${signedBundle.integrityHash}`);
+      if (signedBundle.signature !== undefined) {
+        ctx.stdout(`Signature: ${signedBundle.signature.algorithm} key ${signedBundle.signature.keyId}`);
+      }
     });
 
   program
     .command("verify-attestation")
     .argument("[bundle]", "Evidence bundle path. Defaults to .watchtower/reports/evidence-bundle.json.")
+    .option("--public-key <publicKey>", "PEM Ed25519 public key path for verifying a signed evidence bundle.")
     .description("Verify a Watchtower evidence bundle against current local artifacts.")
-    .action(async (bundle: string | undefined) => {
+    .action(async (bundle: string | undefined, options: { publicKey?: string }) => {
       const paths = getWatchtowerPaths(ctx.cwd);
       const bundlePath = bundle === undefined ? paths.evidenceBundleJson : resolve(ctx.cwd, bundle);
       const evidence = JSON.parse(await readFile(bundlePath, "utf8")) as Awaited<ReturnType<typeof createEvidenceBundle>>;
-      const verification = await verifyEvidenceBundle(evidence, ctx.cwd);
+      const verification = await verifyEvidenceBundle(evidence, ctx.cwd, {
+        ...(options.publicKey === undefined ? {} : { publicKeyPem: await readFile(resolve(ctx.cwd, options.publicKey), "utf8") })
+      });
       if (!verification.ok) {
         throw new Error(`Evidence bundle verification failed: ${verification.failures.join("; ")}`);
       }

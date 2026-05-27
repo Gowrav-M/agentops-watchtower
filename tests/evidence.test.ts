@@ -1,8 +1,9 @@
+import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createEvidenceBundle, verifyEvidenceBundle } from "../src/core/evidence.js";
+import { createEvidenceBundle, signEvidenceBundle, verifyEvidenceBundle } from "../src/core/evidence.js";
 
 const tempDirs: string[] = [];
 
@@ -53,5 +54,33 @@ describe("evidence bundles", () => {
     const verification = await verifyEvidenceBundle(bundle, cwd);
     expect(verification.ok).toBe(false);
     expect(verification.failures.join("\n")).toContain("hash mismatch");
+  });
+
+  it("signs and verifies evidence bundles with Ed25519 keys", async () => {
+    const cwd = await makeTempDir();
+    const admissionPath = join(cwd, "mcp-admission.json");
+    await writeFile(admissionPath, JSON.stringify({ decision: "allow", findings: [] }), "utf8");
+    const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+    const privateKeyPem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
+    const publicKeyPem = publicKey.export({ format: "pem", type: "spki" }).toString();
+    const bundle = await createEvidenceBundle({
+      cwd,
+      artifacts: [{ name: "admission", path: admissionPath }]
+    });
+
+    const signed = signEvidenceBundle(bundle, {
+      keyId: "local-reviewer",
+      privateKeyPem,
+      signedAt: "2026-05-28T00:00:00.000Z"
+    });
+
+    expect(signed.signature).toMatchObject({
+      algorithm: "Ed25519",
+      keyId: "local-reviewer",
+      signedAt: "2026-05-28T00:00:00.000Z"
+    });
+    expect(signed.signature?.signature).toMatch(/^[A-Za-z0-9+/]+={0,2}$/u);
+    expect((await verifyEvidenceBundle(signed, cwd, { publicKeyPem })).ok).toBe(true);
+    expect((await verifyEvidenceBundle({ ...signed, integrityHash: "0".repeat(64) }, cwd, { publicKeyPem })).ok).toBe(false);
   });
 });

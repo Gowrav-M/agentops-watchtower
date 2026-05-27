@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -336,5 +337,37 @@ describe("cli", () => {
     expect(bundle).toContain("\"subject\": \"safe-docs\"");
     expect(bundle).toContain("\"integrityHash\"");
     expect(output.join("\n")).toContain("Evidence bundle verified.");
+  });
+
+  it("attest-mcp can sign and verify evidence with Ed25519 PEM keys", async () => {
+    const cwd = await makeTempDir();
+    const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+    const privateKeyPath = join(cwd, "private.pem");
+    const publicKeyPath = join(cwd, "public.pem");
+    await writeFile(privateKeyPath, privateKey.export({ format: "pem", type: "pkcs8" }).toString(), "utf8");
+    await writeFile(publicKeyPath, publicKey.export({ format: "pem", type: "spki" }).toString(), "utf8");
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await cli.parseAsync(
+      [
+        "node",
+        "watchtower",
+        "admit-mcp",
+        "--descriptor",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-tools.json"),
+        "--config",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-client-config.json")
+      ],
+      { from: "node" }
+    );
+    await cli.parseAsync(
+      ["node", "watchtower", "attest-mcp", "--subject", "safe-docs", "--private-key", privateKeyPath, "--key-id", "local-reviewer"],
+      { from: "node" }
+    );
+    await cli.parseAsync(["node", "watchtower", "verify-attestation", "--public-key", publicKeyPath], { from: "node" });
+
+    const bundle = await readFile(join(cwd, ".watchtower", "reports", "evidence-bundle.json"), "utf8");
+    expect(bundle).toContain("\"algorithm\": \"Ed25519\"");
+    expect(bundle).toContain("\"keyId\": \"local-reviewer\"");
   });
 });

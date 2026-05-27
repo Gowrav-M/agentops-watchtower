@@ -60,6 +60,8 @@ v0.8 adds a selected-server MCP preflight gate. This starts the enforcement path
 
 v0.9 adds AgentBOM export. Current guidance around shadow AI, OpenSSF AI supply-chain security, and CycloneDX AI/ML-BOM points toward machine-readable inventory as a governance primitive. Watchtower now emits a local Agent Bill of Materials plus a CycloneDX-compatible component view for MCP configs, servers, tools, fingerprints, and findings.
 
+v1.0 adds signed evidence bundles. This closes the local audit loop: teams can prove which artifacts were reviewed, detect later mutation, and verify reviewer/key identity with Ed25519 signatures.
+
 ## Source References
 
 - OpenTelemetry GenAI/MCP semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/

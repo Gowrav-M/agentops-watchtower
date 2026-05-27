@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import type { AdmissionDecision, AdmissionReport } from "./admission.js";
@@ -23,6 +23,14 @@ export interface EvidenceBundle {
   admissionDecision?: AdmissionDecision;
   artifacts: EvidenceArtifact[];
   integrityHash: string;
+  signature?: EvidenceSignature;
+}
+
+export interface EvidenceSignature {
+  algorithm: "Ed25519";
+  keyId: string;
+  signedAt: string;
+  signature: string;
 }
 
 export interface CreateEvidenceBundleInput {
@@ -36,6 +44,17 @@ export interface CreateEvidenceBundleInput {
 export interface EvidenceVerification {
   ok: boolean;
   failures: string[];
+}
+
+export interface SignEvidenceBundleInput {
+  keyId: string;
+  privateKeyPem: string;
+  signedAt?: string;
+}
+
+export interface VerifyEvidenceBundleOptions {
+  publicKeyPem?: string;
+  requireSignature?: boolean;
 }
 
 export async function createEvidenceBundle(input: CreateEvidenceBundleInput): Promise<EvidenceBundle> {
@@ -54,18 +73,49 @@ export async function createEvidenceBundle(input: CreateEvidenceBundleInput): Pr
   };
 }
 
-export async function verifyEvidenceBundle(bundle: EvidenceBundle, cwd: string): Promise<EvidenceVerification> {
-  const failures: string[] = [];
-  const unsignedBundle: Omit<EvidenceBundle, "integrityHash"> = {
-    schemaVersion: bundle.schemaVersion,
-    generatedAt: bundle.generatedAt,
-    ...(bundle.subject === undefined ? {} : { subject: bundle.subject }),
-    ...(bundle.admissionDecision === undefined ? {} : { admissionDecision: bundle.admissionDecision }),
-    artifacts: bundle.artifacts
+export function signEvidenceBundle(bundle: EvidenceBundle, input: SignEvidenceBundleInput): EvidenceBundle {
+  const unsignedBundle = bundleWithoutSignature(bundle);
+  const signedAt = input.signedAt ?? new Date().toISOString();
+  const signatureMetadata: Omit<EvidenceSignature, "signature"> = {
+    algorithm: "Ed25519",
+    keyId: input.keyId,
+    signedAt
   };
-  const expectedIntegrity = sha256(stableStringify(unsignedBundle as unknown as JsonValue));
+  const payload = signaturePayload(unsignedBundle, signatureMetadata);
+  const privateKey = createPrivateKey(input.privateKeyPem);
+  const signature = sign(null, Buffer.from(stableStringify(payload), "utf8"), privateKey).toString("base64");
+
+  return {
+    ...unsignedBundle,
+    signature: {
+      ...signatureMetadata,
+      signature
+    }
+  };
+}
+
+export async function verifyEvidenceBundle(
+  bundle: EvidenceBundle,
+  cwd: string,
+  options: VerifyEvidenceBundleOptions = {}
+): Promise<EvidenceVerification> {
+  const failures: string[] = [];
+  const unsignedBundle = bundleWithoutSignature(bundle);
+  const expectedIntegrity = sha256(stableStringify(bundleIntegrityPayload(unsignedBundle) as unknown as JsonValue));
   if (expectedIntegrity !== bundle.integrityHash) {
     failures.push("integrity hash mismatch");
+  }
+
+  if (options.requireSignature === true && bundle.signature === undefined) {
+    failures.push("signature missing");
+  }
+
+  if (options.publicKeyPem !== undefined) {
+    if (bundle.signature === undefined) {
+      failures.push("signature missing");
+    } else if (!verifyEvidenceSignature(unsignedBundle, bundle.signature, options.publicKeyPem)) {
+      failures.push("signature verification failed");
+    }
   }
 
   for (const artifact of bundle.artifacts) {
@@ -112,6 +162,52 @@ async function hashArtifact(cwd: string, artifact: EvidenceArtifactInput): Promi
 
 function sha256(value: Buffer | string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function verifyEvidenceSignature(bundle: Omit<EvidenceBundle, "signature">, signature: EvidenceSignature, publicKeyPem: string): boolean {
+  const publicKey = createPublicKey(publicKeyPem);
+  const payload = signaturePayload(bundle, {
+    algorithm: signature.algorithm,
+    keyId: signature.keyId,
+    signedAt: signature.signedAt
+  });
+  return verify(
+    null,
+    Buffer.from(stableStringify(payload), "utf8"),
+    publicKey,
+    Buffer.from(signature.signature, "base64")
+  );
+}
+
+function bundleWithoutSignature(bundle: EvidenceBundle): Omit<EvidenceBundle, "signature"> {
+  return {
+    schemaVersion: bundle.schemaVersion,
+    generatedAt: bundle.generatedAt,
+    ...(bundle.subject === undefined ? {} : { subject: bundle.subject }),
+    ...(bundle.admissionDecision === undefined ? {} : { admissionDecision: bundle.admissionDecision }),
+    artifacts: bundle.artifacts,
+    integrityHash: bundle.integrityHash
+  };
+}
+
+function bundleIntegrityPayload(bundle: Omit<EvidenceBundle, "signature">): Omit<EvidenceBundle, "integrityHash" | "signature"> {
+  return {
+    schemaVersion: bundle.schemaVersion,
+    generatedAt: bundle.generatedAt,
+    ...(bundle.subject === undefined ? {} : { subject: bundle.subject }),
+    ...(bundle.admissionDecision === undefined ? {} : { admissionDecision: bundle.admissionDecision }),
+    artifacts: bundle.artifacts
+  };
+}
+
+function signaturePayload(
+  bundle: Omit<EvidenceBundle, "signature">,
+  signature: Omit<EvidenceSignature, "signature">
+): JsonValue {
+  return {
+    evidenceBundle: bundle as unknown as JsonValue,
+    signature: signature as unknown as JsonValue
+  };
 }
 
 function stableStringify(value: JsonValue): string {
