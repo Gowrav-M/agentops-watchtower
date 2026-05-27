@@ -62,7 +62,8 @@ jobs:
         run: node dist/cli.js analyze-run --trace examples/traces/codex-session.jsonl --fail-on high --sarif
 
       - name: Evidence signing keys
-        run: node -e "const { generateKeyPairSync } = require('node:crypto'); const { mkdirSync, writeFileSync } = require('node:fs'); mkdirSync('.watchtower', { recursive: true }); const { privateKey, publicKey } = generateKeyPairSync('ed25519'); writeFileSync('.watchtower/private.pem', privateKey.export({ format: 'pem', type: 'pkcs8' })); writeFileSync('.watchtower/public.pem', publicKey.export({ format: 'pem', type: 'spki' }));"
+        run: |
+          node -e "const { generateKeyPairSync } = require('node:crypto'); const { mkdirSync, writeFileSync } = require('node:fs'); mkdirSync('.watchtower', { recursive: true }); const { privateKey, publicKey } = generateKeyPairSync('ed25519'); writeFileSync('.watchtower/private.pem', privateKey.export({ format: 'pem', type: 'pkcs8' })); writeFileSync('.watchtower/public.pem', publicKey.export({ format: 'pem', type: 'spki' }));"
 
       - name: Evidence bundle
         run: node dist/cli.js attest-mcp --subject safe-docs --private-key .watchtower/private.pem --key-id ci && node dist/cli.js verify-attestation --public-key .watchtower/public.pem
