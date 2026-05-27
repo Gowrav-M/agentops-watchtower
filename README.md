@@ -25,11 +25,13 @@ node dist/cli.js demo
 The demo writes local files under `.watchtower/`:
 
 - `.watchtower/runs/runs.jsonl`
+- `.watchtower/baselines/mcp-tools.json`
 - `.watchtower/reports/watchtower-report.md`
 - `.watchtower/reports/watchtower-report.html`
 - `.watchtower/reports/watchtower-report.json`
 - `.watchtower/reports/mcp-scan.json`
 - `.watchtower/reports/otel-spans.json`
+- `.watchtower/reports/watchtower.sarif`
 
 No paid API is required. No trace data leaves your machine.
 
@@ -39,6 +41,9 @@ No paid API is required. No trace data leaves your machine.
 agentops-watchtower init
 agentops-watchtower import examples/traces/codex-session.jsonl
 agentops-watchtower scan-mcp examples/mcp/risky-tools.json
+agentops-watchtower scan-mcp examples/mcp/risky-tools.json --sarif
+agentops-watchtower baseline-mcp examples/mcp/safe-tools.json
+agentops-watchtower diff-mcp examples/mcp/safe-tools.json
 agentops-watchtower eval
 agentops-watchtower report --mcp examples/mcp/risky-tools.json
 agentops-watchtower export-otel
@@ -52,7 +57,9 @@ agentops-watchtower doctor
 | `init` | Creates `.watchtower/` local config and storage folders. |
 | `demo` | Runs the bundled trace and MCP descriptor examples. |
 | `import <trace>` | Imports JSONL, NDJSON, Markdown, or text transcripts into normalized local JSONL. |
-| `scan-mcp [descriptor]` | Scans MCP descriptors for risky annotations, missing schemas, sensitive inputs, and weak descriptions. |
+| `scan-mcp [descriptor]` | Scans MCP descriptors for risky annotations, missing schemas, sensitive inputs, weak descriptions, and tool poisoning. |
+| `baseline-mcp <descriptor>` | Saves an approved MCP tool fingerprint baseline. |
+| `diff-mcp <descriptor>` | Compares current MCP descriptors against the approved baseline to detect tool drift. |
 | `eval` | Runs deterministic checks against imported agent runs. |
 | `report` | Generates Markdown, HTML, and JSON reports from local runs plus optional MCP findings. |
 | `export-otel` | Exports local runs as OpenTelemetry-style GenAI/MCP span JSON. |
@@ -66,6 +73,7 @@ agentops-watchtower doctor
 - Missing `outputSchema`.
 - Sensitive input fields such as API keys, tokens, passwords, secrets, MFA, or private keys.
 - Tool-poisoning patterns hidden in descriptions and schemas.
+- MCP tool drift: added, removed, or changed descriptors after approval.
 - Failed agent steps and risky tool calls in imported traces.
 - Unredacted secret-looking arguments in tool call records.
 
@@ -76,6 +84,7 @@ Use Watchtower as a failing CI gate:
 ```bash
 npx agentops-watchtower scan-mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower report --mcp examples/mcp/risky-tools.json --fail-on high
+npx agentops-watchtower diff-mcp examples/mcp/risky-tools.json --fail-on high
 ```
 
 The optional `watchtower.config.json` file controls defaults:
@@ -95,6 +104,35 @@ The optional `watchtower.config.json` file controls defaults:
 ```
 
 See [docs/policy.md](docs/policy.md).
+
+## MCP Baselines
+
+Prevent silent MCP tool changes by approving a descriptor once and comparing later versions:
+
+```bash
+npx agentops-watchtower baseline-mcp mcp-tools.json
+npx agentops-watchtower diff-mcp mcp-tools.json --fail-on high
+```
+
+Watchtower fingerprints tool names, descriptions, input schemas, output schemas, and annotations. This catches practical rug-pull risk: a server can look safe during review, then later change tool metadata that the agent trusts.
+
+See [docs/mcp-baselines.md](docs/mcp-baselines.md).
+
+## GitHub Code Scanning
+
+Generate SARIF for GitHub Code Scanning:
+
+```bash
+npx agentops-watchtower scan-mcp mcp-tools.json --sarif
+```
+
+Output:
+
+```text
+.watchtower/reports/watchtower.sarif
+```
+
+See [docs/sarif.md](docs/sarif.md) and [examples/github/watchtower-code-scanning.yml](examples/github/watchtower-code-scanning.yml).
 
 ## OpenTelemetry Export
 
@@ -127,6 +165,8 @@ AgentOps Watchtower focuses on the useful middle ground:
 - safer than raw transcript sharing,
 - easy to run in CI or locally.
 
+See [docs/research.md](docs/research.md) for the v0.3 research notes and repository signal.
+
 ## Development
 
 ```bash
@@ -140,12 +180,12 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v0.2: local JSONL storage, deterministic evals, MCP descriptor scanning, policy gates, tool-poisoning checks, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v0.3: local JSONL storage, deterministic evals, MCP descriptor scanning, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.
 - MCP server wrapper mode.
-- GitHub Action summary comments.
+- GitHub Action summary comments and packaged action.
 - Browser-based local report viewer.
 
 ## License

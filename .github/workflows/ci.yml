@@ -38,7 +38,13 @@ jobs:
         run: node dist/cli.js demo
 
       - name: Policy scan
-        run: node dist/cli.js scan-mcp examples/mcp/safe-tools.json --fail-on high
+        run: node dist/cli.js scan-mcp examples/mcp/safe-tools.json --fail-on high --sarif
+
+      - name: MCP baseline
+        run: node dist/cli.js baseline-mcp examples/mcp/safe-tools.json
+
+      - name: MCP baseline diff
+        run: node dist/cli.js diff-mcp examples/mcp/safe-tools.json --fail-on high
 
       - name: OTel export
         run: node dist/cli.js export-otel

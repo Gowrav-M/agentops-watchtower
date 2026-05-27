@@ -20,6 +20,7 @@ export const WatchtowerConfigSchema = z
     schemaVersion: z.literal(1),
     storage: z.literal("local-jsonl"),
     runsFile: z.string().optional(),
+    baselineFile: z.string().optional(),
     reportsDir: z.string().optional(),
     redaction: z.enum(["enabled", "disabled"]).optional(),
     policy: PolicySchema.optional()

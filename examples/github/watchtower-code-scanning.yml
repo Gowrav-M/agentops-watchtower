@@ -1,0 +1,31 @@
+name: Watchtower Code Scanning
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  mcp-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Scan MCP descriptor
+        run: npx agentops-watchtower scan-mcp examples/mcp/safe-tools.json --sarif --fail-on high
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: .watchtower/reports/watchtower.sarif
+          category: agentops-watchtower

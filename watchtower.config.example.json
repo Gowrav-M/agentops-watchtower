@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "storage": "local-jsonl",
   "runsFile": ".watchtower/runs/runs.jsonl",
+  "baselineFile": ".watchtower/baselines/mcp-tools.json",
   "reportsDir": ".watchtower/reports",
   "redaction": "enabled",
   "policy": {

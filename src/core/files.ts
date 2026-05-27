@@ -7,33 +7,43 @@ export interface WatchtowerPaths {
   config: string;
   runsDir: string;
   runsJsonl: string;
+  baselinesDir: string;
+  mcpBaselineJson: string;
   reportsDir: string;
   reportMarkdown: string;
   reportHtml: string;
   reportJson: string;
   otelSpansJson: string;
+  sarifJson: string;
+  mcpBaselineDiffJson: string;
 }
 
 export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
   const root = join(cwd, ".watchtower");
   const runsDir = join(root, "runs");
+  const baselinesDir = join(root, "baselines");
   const reportsDir = join(root, "reports");
   return {
     root,
     config: join(root, "config.json"),
     runsDir,
     runsJsonl: join(runsDir, "runs.jsonl"),
+    baselinesDir,
+    mcpBaselineJson: join(baselinesDir, "mcp-tools.json"),
     reportsDir,
     reportMarkdown: join(reportsDir, "watchtower-report.md"),
     reportHtml: join(reportsDir, "watchtower-report.html"),
     reportJson: join(reportsDir, "watchtower-report.json"),
-    otelSpansJson: join(reportsDir, "otel-spans.json")
+    otelSpansJson: join(reportsDir, "otel-spans.json"),
+    sarifJson: join(reportsDir, "watchtower.sarif"),
+    mcpBaselineDiffJson: join(reportsDir, "mcp-baseline-diff.json")
   };
 }
 
 export async function ensureWatchtowerDirs(cwd: string): Promise<WatchtowerPaths> {
   const paths = getWatchtowerPaths(cwd);
   await mkdir(paths.runsDir, { recursive: true });
+  await mkdir(paths.baselinesDir, { recursive: true });
   await mkdir(paths.reportsDir, { recursive: true });
   return paths;
 }

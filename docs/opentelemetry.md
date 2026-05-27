@@ -12,7 +12,7 @@ Output:
 .watchtower/reports/otel-spans.json
 ```
 
-The v0.2 exporter is dependency-free and writes portable JSON rather than sending telemetry anywhere. It uses GenAI/MCP semantic attribute names where they fit:
+The exporter is dependency-free and writes portable JSON rather than sending telemetry anywhere. It uses GenAI/MCP semantic attribute names where they fit:
 
 - `gen_ai.operation.name`
 - `gen_ai.agent.name`
