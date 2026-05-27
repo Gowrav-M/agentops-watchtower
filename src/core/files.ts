@@ -17,6 +17,7 @@ export interface WatchtowerPaths {
   sarifJson: string;
   mcpBaselineDiffJson: string;
   mcpInventoryJson: string;
+  mcpAdmissionJson: string;
 }
 
 export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
@@ -38,7 +39,8 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     otelSpansJson: join(reportsDir, "otel-spans.json"),
     sarifJson: join(reportsDir, "watchtower.sarif"),
     mcpBaselineDiffJson: join(reportsDir, "mcp-baseline-diff.json"),
-    mcpInventoryJson: join(reportsDir, "mcp-inventory.json")
+    mcpInventoryJson: join(reportsDir, "mcp-inventory.json"),
+    mcpAdmissionJson: join(reportsDir, "mcp-admission.json")
   };
 }
 

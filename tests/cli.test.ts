@@ -138,4 +138,51 @@ describe("cli", () => {
     expect(inventory).toContain("mcp.config.dangerous_shell");
     expect(sarif).toContain("mcp.config.dangerous_shell");
   });
+
+  it("admit-mcp writes an allow decision for safe descriptor and config", async () => {
+    const cwd = await makeTempDir();
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(
+      [
+        "node",
+        "watchtower",
+        "admit-mcp",
+        "--descriptor",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-tools.json"),
+        "--config",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-client-config.json"),
+        "--sarif"
+      ],
+      { from: "node" }
+    );
+
+    const admission = await readFile(join(cwd, ".watchtower", "reports", "mcp-admission.json"), "utf8");
+    expect(output.join("\n")).toContain("Admission decision: allow");
+    expect(admission).toContain("\"decision\": \"allow\"");
+  });
+
+  it("admit-mcp fails policy for denied MCP admission", async () => {
+    const cwd = await makeTempDir();
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await expect(
+      cli.parseAsync(
+        [
+          "node",
+          "watchtower",
+          "admit-mcp",
+          "--config",
+          join(import.meta.dirname, "..", "examples", "mcp", "sample-client-config.json"),
+          "--fail-on",
+          "critical"
+        ],
+        { from: "node" }
+      )
+    ).rejects.toThrow(/Policy threshold failed/u);
+
+    const admission = await readFile(join(cwd, ".watchtower", "reports", "mcp-admission.json"), "utf8");
+    expect(admission).toContain("\"decision\": \"deny\"");
+  });
 });

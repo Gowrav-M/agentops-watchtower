@@ -49,5 +49,8 @@ jobs:
       - name: MCP inventory
         run: node dist/cli.js inventory-mcp examples/mcp/safe-client-config.json --fail-on high --sarif
 
+      - name: MCP admission
+        run: node dist/cli.js admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --fail-on high --sarif
+
       - name: OTel export
         run: node dist/cli.js export-otel

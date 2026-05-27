@@ -31,6 +31,7 @@ The demo writes local files under `.watchtower/`:
 - `.watchtower/reports/watchtower-report.json`
 - `.watchtower/reports/mcp-scan.json`
 - `.watchtower/reports/mcp-inventory.json`
+- `.watchtower/reports/mcp-admission.json`
 - `.watchtower/reports/otel-spans.json`
 - `.watchtower/reports/watchtower.sarif`
 
@@ -46,6 +47,7 @@ agentops-watchtower scan-mcp examples/mcp/risky-tools.json --sarif
 agentops-watchtower baseline-mcp examples/mcp/safe-tools.json
 agentops-watchtower diff-mcp examples/mcp/safe-tools.json
 agentops-watchtower inventory-mcp
+agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
 agentops-watchtower eval
 agentops-watchtower report --mcp examples/mcp/risky-tools.json
 agentops-watchtower export-otel
@@ -63,6 +65,7 @@ agentops-watchtower doctor
 | `baseline-mcp <descriptor>` | Saves an approved MCP tool fingerprint baseline. |
 | `diff-mcp <descriptor>` | Compares current MCP descriptors against the approved baseline to detect tool drift. |
 | `inventory-mcp [configs...]` | Inventories local MCP client configs and flags risky launch settings. |
+| `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
 | `eval` | Runs deterministic checks against imported agent runs. |
 | `report` | Generates Markdown, HTML, and JSON reports from local runs plus optional MCP findings. |
 | `export-otel` | Exports local runs as OpenTelemetry-style GenAI/MCP span JSON. |
@@ -90,6 +93,7 @@ npx agentops-watchtower scan-mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower report --mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower diff-mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower inventory-mcp --fail-on high
+npx agentops-watchtower admit-mcp --descriptor examples/mcp/risky-tools.json --config examples/mcp/sample-client-config.json --fail-on high
 ```
 
 The optional `watchtower.config.json` file controls defaults:
@@ -140,6 +144,27 @@ npx agentops-watchtower inventory-mcp .mcp.json ~/.codex/config.toml --sarif --f
 This catches the real workstation risk before runtime: arbitrary shell launchers, package runners without pinned versions, literal tokens in env/header config, deprecated SSE, and remote plain HTTP.
 
 See [docs/mcp-inventory.md](docs/mcp-inventory.md).
+
+## MCP Admission Gate
+
+Make one deterministic decision before an agent is allowed to use an MCP server:
+
+```bash
+npx agentops-watchtower admit-mcp \
+  --descriptor mcp-tools.json \
+  --config .mcp.json \
+  --baseline .watchtower/baselines/mcp-tools.json \
+  --sarif \
+  --fail-on high
+```
+
+Decision values:
+
+- `allow`: no material findings.
+- `review`: medium or high findings need human approval.
+- `deny`: critical findings should block usage.
+
+See [docs/mcp-admission.md](docs/mcp-admission.md).
 
 ## GitHub Code Scanning
 
@@ -203,7 +228,7 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v0.4: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v0.5: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, MCP admission decisions, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.

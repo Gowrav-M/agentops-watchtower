@@ -20,6 +20,7 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 - Tool-poisoning instructions hidden in descriptions and schemas.
 - MCP tool drift after approval: added tools, removed tools, or changed descriptors.
 - Risky MCP launch configuration: shell wrappers, unpinned package runners, hardcoded credentials, pre-trusted servers, plain remote HTTP.
+- Admission decision control before enabling a server for agent use.
 - Missing output schemas that make tool results harder to use safely.
 - Weak tool descriptions that hide side effects.
 - Failed agent steps and risky tool-call names in imported traces.
@@ -42,3 +43,4 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 - Generated `.watchtower/` data is ignored by Git by default.
 - Policy gates can fail CI for high or critical findings.
 - MCP baselines make descriptor changes explicit before agents trust updated tools.
+- Admission reports collapse multiple checks into one allow/review/deny decision.

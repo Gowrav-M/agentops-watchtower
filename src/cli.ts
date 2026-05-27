@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
+import { createAdmissionReport, type AdmissionCheck } from "./core/admission.js";
 import { evaluateRuns } from "./core/evaluator.js";
 import {
   appendRunJsonl,
@@ -44,7 +45,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.4.0");
+    .version("0.5.0");
 
   program
     .command("init")
@@ -198,6 +199,81 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
       const failOn = parseSeverityOption(options.failOn) ?? config.policy.failOn;
       if (shouldFailForFindings(inventory.findings, failOn)) {
         throw new Error(summarizePolicyFailure(inventory.findings, failOn));
+      }
+    });
+
+  program
+    .command("admit-mcp")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to scan before admission.")
+    .option("-c, --config <config...>", "MCP client config file(s) to inventory before admission.")
+    .option("-b, --baseline <baseline>", "Optional Watchtower MCP baseline file for drift checks.")
+    .option("--fail-on <severity>", "Exit non-zero when admission findings meet this severity.")
+    .option("--sarif", "Also write GitHub code scanning SARIF output.")
+    .description("Create an MCP admission decision from config inventory, descriptor scan, and optional baseline drift.")
+    .action(async (options: { descriptor?: string; config?: string[]; baseline?: string; failOn?: string; sarif?: boolean }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const config = await loadWatchtowerConfig(ctx.cwd);
+      const checks: AdmissionCheck[] = [];
+
+      if (options.config !== undefined && options.config.length > 0) {
+        const inventory = await inventoryMcpConfigFiles(
+          explicitMcpConfigCandidates(options.config.map((configPath) => resolve(ctx.cwd, configPath)))
+        );
+        await writeJsonFile(paths.mcpInventoryJson, inventory);
+        checks.push({
+          name: "config-inventory",
+          status: inventory.findings.length === 0 ? "passed" : "failed",
+          findings: inventory.findings
+        });
+      } else {
+        checks.push({ name: "config-inventory", status: "skipped", findings: [] });
+      }
+
+      if (options.descriptor !== undefined) {
+        const descriptorPath = resolve(ctx.cwd, options.descriptor);
+        const descriptorScan = await scanMcpDescriptorFile(descriptorPath, config.policy);
+        await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), descriptorScan);
+        checks.push({
+          name: "descriptor-scan",
+          status: descriptorScan.findings.length === 0 ? "passed" : "failed",
+          findings: descriptorScan.findings
+        });
+
+        const baselinePath = options.baseline === undefined ? paths.mcpBaselineJson : resolve(ctx.cwd, options.baseline);
+        if (await fileExists(baselinePath)) {
+          const baseline = await readMcpBaselineFile(baselinePath);
+          const diff = compareMcpBaseline(baseline, descriptorScan.tools);
+          await writeJsonFile(paths.mcpBaselineDiffJson, diff);
+          checks.push({
+            name: "baseline-diff",
+            status: diff.findings.length === 0 ? "passed" : "failed",
+            findings: diff.findings
+          });
+        } else {
+          checks.push({ name: "baseline-diff", status: "skipped", findings: [] });
+        }
+      } else {
+        checks.push({ name: "descriptor-scan", status: "skipped", findings: [] });
+        checks.push({ name: "baseline-diff", status: "skipped", findings: [] });
+      }
+
+      const admission = createAdmissionReport({ checks });
+      await writeJsonFile(paths.mcpAdmissionJson, admission);
+      if (options.sarif === true) {
+        await writeJsonFile(
+          paths.sarifJson,
+          exportSarif(admission.findings, {
+            ...(options.descriptor === undefined ? {} : { sourceUri: sourceUri(ctx.cwd, resolve(ctx.cwd, options.descriptor)) }),
+            invocationCommandLine: "agentops-watchtower admit-mcp --sarif"
+          })
+        );
+        ctx.stdout(`Wrote ${paths.sarifJson}`);
+      }
+      ctx.stdout(`Admission decision: ${admission.decision}`);
+      ctx.stdout(`Findings: ${admission.summary.findings}.`);
+      const failOn = parseSeverityOption(options.failOn) ?? "critical";
+      if (shouldFailForFindings(admission.findings, failOn)) {
+        throw new Error(summarizePolicyFailure(admission.findings, failOn));
       }
     });
 

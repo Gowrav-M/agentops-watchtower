@@ -25,6 +25,7 @@ npx agentops-watchtower scan-mcp mcp-tools.json --fail-on high
 npx agentops-watchtower report --mcp mcp-tools.json --fail-on high
 npx agentops-watchtower diff-mcp mcp-tools.json --fail-on high
 npx agentops-watchtower inventory-mcp --fail-on high
+npx agentops-watchtower admit-mcp --descriptor mcp-tools.json --config .mcp.json --fail-on high
 ```
 
 Severity order:
@@ -35,7 +36,7 @@ info < low < medium < high < critical
 
 If a finding is at or above the threshold, the command exits non-zero. That makes Watchtower usable in GitHub Actions, pre-merge checks, and internal release gates.
 
-Policy gates apply to scanner findings, report findings, MCP baseline drift findings, and MCP config inventory findings.
+Policy gates apply to scanner findings, report findings, MCP baseline drift findings, MCP config inventory findings, and MCP admission findings.
 
 ## Tool-Poisoning Checks
 

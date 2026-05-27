@@ -8,10 +8,12 @@ flowchart LR
   CLI --> Scanner["MCP scanner"]
   CLI --> Inventory["MCP config inventory"]
   CLI --> Baseline["MCP baseline diff"]
+  CLI --> Admission["MCP admission gate"]
   Importer --> Runs["Local JSONL runs"]
   Scanner --> Findings["Risk findings"]
   Inventory --> Findings
   Baseline --> Findings
+  Findings --> Admission
   Runs --> Evals["Deterministic evals"]
   Findings --> Report["Report builder"]
   Evals --> Report
@@ -43,6 +45,7 @@ Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. 
 
 - `src/core/schemas.ts`: Zod contracts for runs, steps, tool calls, MCP descriptors, findings, eval results, and reports.
 - `src/core/importer.ts`: JSONL and Markdown transcript ingestion.
+- `src/core/admission.ts`: allow/review/deny MCP admission reports.
 - `src/core/mcpScanner.ts`: MCP descriptor risk checks and tool-poisoning metadata scan.
 - `src/core/mcpInventory.ts`: local MCP client config discovery and launch-risk analysis.
 - `src/core/mcpBaseline.ts`: deterministic MCP tool fingerprint baselines and drift findings.

@@ -5,6 +5,7 @@ Watchtower can export MCP security findings as SARIF 2.1.0 for GitHub Code Scann
 ```bash
 npx agentops-watchtower scan-mcp mcp-tools.json --sarif
 npx agentops-watchtower inventory-mcp --sarif
+npx agentops-watchtower admit-mcp --descriptor mcp-tools.json --config .mcp.json --sarif
 ```
 
 Output:

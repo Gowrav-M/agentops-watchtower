@@ -50,6 +50,8 @@ v0.3 added MCP baselines, drift findings, and SARIF export.
 
 v0.4 extends the same evidence model to installed MCP client configuration. It inventories Codex, Claude Code, Claude Desktop, Cursor, VS Code, and Gemini CLI config locations and flags dangerous launch paths before the server starts.
 
+v0.5 adds local admission control: config inventory, descriptor scan, and baseline drift are combined into a single `allow`, `review`, or `deny` decision that CI and security reviewers can consume.
+
 ## Source References
 
 - OpenTelemetry GenAI/MCP semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/

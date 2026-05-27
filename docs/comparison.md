@@ -18,6 +18,7 @@ agentops-watchtower scan-mcp tools.json --sarif
 agentops-watchtower baseline-mcp tools.json
 agentops-watchtower diff-mcp tools.json
 agentops-watchtower inventory-mcp
+agentops-watchtower admit-mcp --descriptor tools.json --config .mcp.json
 agentops-watchtower report --mcp tools.json
 agentops-watchtower export-otel
 ```
