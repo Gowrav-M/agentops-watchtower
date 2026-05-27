@@ -1,0 +1,2 @@
+{"type":"session","id":"runtime-result","agent":"codex","startedAt":"2026-05-27T10:00:00.000Z","goal":"Import structured tool result"}
+{"type":"tool_call","id":"tool-1","timestamp":"2026-05-27T10:00:01.000Z","toolName":"read_secret","arguments":{"name":"CI_TOKEN"},"status":"success","resultText":"Loaded credential metadata.","result":{"metadata":{"token":"secret-token","label":"ci"}}}

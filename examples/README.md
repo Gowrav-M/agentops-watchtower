@@ -10,6 +10,7 @@
 ## Traces
 
 - `traces/codex-session.jsonl`: normalized JSONL-style agent session.
+- `traces/source-to-sink.jsonl`: runtime attack graph fixture with a secret-like source and external sink.
 - `traces/claude-session.md`: Markdown transcript import example.
 
 Run:
@@ -21,10 +22,11 @@ npm run dev -- baseline-mcp examples/mcp/safe-tools.json
 npm run dev -- diff-mcp examples/mcp/safe-tools.json
 npm run dev -- inventory-mcp examples/mcp/sample-client-config.json --sarif
 npm run dev -- admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --sarif
+npm run dev -- analyze-run --trace examples/traces/source-to-sink.jsonl --sarif
 npm run dev -- attest-mcp --subject safe-docs
 npm run dev -- verify-attestation
 npm run dev -- import examples/traces/codex-session.jsonl
-npm run dev -- report --mcp examples/mcp/risky-tools.json
+npm run dev -- report --mcp examples/mcp/risky-tools.json --analyze
 npm run dev -- export-otel
 ```
 

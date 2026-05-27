@@ -54,9 +54,12 @@ v0.5 adds local admission control: config inventory, descriptor scan, and baseli
 
 v0.6 adds tamper-evident evidence bundles. This addresses the audit and non-repudiation gap: teams can prove which artifacts were reviewed, what admission decision was made, and whether the evidence changed later.
 
+v0.7 adds runtime attack graph analysis. This addresses a deeper gap surfaced by OWASP and Microsoft guidance: even if tools pass static review, an agent can combine a source and sink into a dangerous chain at runtime. Watchtower now flags source-to-sink paths, prompt-injected tool results, and blocked-action bypass patterns from local traces.
+
 ## Source References
 
 - OpenTelemetry GenAI/MCP semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/
 - OWASP MCP Security Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html
 - OWASP MCP Top 10: https://owasp.org/www-project-mcp-top-10/
 - GitHub SARIF upload docs: https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/integrate-with-existing-tools/uploading-a-sarif-file-to-github
+- Microsoft indirect prompt injection defense guidance: https://learn.microsoft.com/en-us/security/zero-trust/sfi/defend-indirect-prompt-injection

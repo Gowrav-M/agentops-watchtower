@@ -13,6 +13,21 @@ describe("trace importer", () => {
     expect(run.toolCalls[0]?.arguments).toEqual({ workspaceId: "demo", apiKey: "[REDACTED]" });
   });
 
+  it("imports richer tool result fields and redacts secrets inside structured results", async () => {
+    const run = await importTraceFile(join(import.meta.dirname, "fixtures", "runtime-result.jsonl"));
+
+    expect(run.toolCalls[0]).toMatchObject({
+      toolName: "read_secret",
+      resultText: "Loaded credential metadata."
+    });
+    expect(run.toolCalls[0]?.result).toEqual({
+      metadata: {
+        token: "[REDACTED]",
+        label: "ci"
+      }
+    });
+  });
+
   it("imports markdown transcripts into a normalized run", async () => {
     const run = await importTraceFile(join(import.meta.dirname, "fixtures", "claude-session.md"));
 

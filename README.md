@@ -32,6 +32,7 @@ The demo writes local files under `.watchtower/`:
 - `.watchtower/reports/mcp-scan.json`
 - `.watchtower/reports/mcp-inventory.json`
 - `.watchtower/reports/mcp-admission.json`
+- `.watchtower/reports/attack-graph.json`
 - `.watchtower/reports/otel-spans.json`
 - `.watchtower/reports/watchtower.sarif`
 - `.watchtower/reports/evidence-bundle.json`
@@ -51,8 +52,9 @@ agentops-watchtower inventory-mcp
 agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
 agentops-watchtower attest-mcp --subject safe-docs
 agentops-watchtower verify-attestation
+agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --sarif
 agentops-watchtower eval
-agentops-watchtower report --mcp examples/mcp/risky-tools.json
+agentops-watchtower report --mcp examples/mcp/risky-tools.json --analyze
 agentops-watchtower export-otel
 agentops-watchtower doctor
 ```
@@ -71,8 +73,9 @@ agentops-watchtower doctor
 | `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
 | `attest-mcp` | Creates a tamper-evident local evidence bundle from Watchtower reports. |
 | `verify-attestation` | Verifies evidence bundle integrity and artifact hashes. |
+| `analyze-run` | Builds a runtime attack graph from agent tool-call traces. |
 | `eval` | Runs deterministic checks against imported agent runs. |
-| `report` | Generates Markdown, HTML, and JSON reports from local runs plus optional MCP findings. |
+| `report` | Generates Markdown, HTML, and JSON reports from local runs plus optional MCP and runtime findings. |
 | `export-otel` | Exports local runs as OpenTelemetry-style GenAI/MCP span JSON. |
 | `doctor` | Checks Node version, write access, and local config shape. |
 
@@ -86,6 +89,8 @@ agentops-watchtower doctor
 - Tool-poisoning patterns hidden in descriptions and schemas.
 - MCP tool drift: added, removed, or changed descriptors after approval.
 - Risky local MCP config: dangerous shell launchers, hardcoded secrets, unpinned package runners, SSE, and plain remote HTTP.
+- Runtime attack paths: secret-like sources flowing to external sinks, untrusted content flowing to shell/destructive/external tools, repository context leaving the workspace, and blocked actions followed by alternate sinks.
+- Prompt-injection-like instructions in tool result summaries, `resultText`, or structured `result` values.
 - Failed agent steps and risky tool calls in imported traces.
 - Unredacted secret-looking arguments in tool call records.
 
@@ -99,6 +104,7 @@ npx agentops-watchtower report --mcp examples/mcp/risky-tools.json --fail-on hig
 npx agentops-watchtower diff-mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower inventory-mcp --fail-on high
 npx agentops-watchtower admit-mcp --descriptor examples/mcp/risky-tools.json --config examples/mcp/sample-client-config.json --fail-on high
+npx agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --fail-on high
 ```
 
 The optional `watchtower.config.json` file controls defaults:
@@ -185,6 +191,30 @@ The evidence bundle records artifact paths, byte sizes, SHA-256 hashes, admissio
 
 See [docs/evidence-bundles.md](docs/evidence-bundles.md).
 
+## Runtime Attack Graph
+
+Detect risky tool chains after an agent run:
+
+```bash
+npx agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --sarif --fail-on high
+```
+
+Watchtower writes:
+
+```text
+.watchtower/reports/attack-graph.json
+```
+
+The analyzer is deterministic. It classifies tool calls as sources, sinks, transforms, approvals, or blockers, then flags dangerous runtime paths such as `read_secret -> send_email`, prompt-injected `fetch_url -> shell_exec`, repository reads followed by external posts, and blocked destructive calls followed by alternate sinks.
+
+Reports can include the same findings:
+
+```bash
+npx agentops-watchtower report --trace examples/traces/source-to-sink.jsonl --analyze
+```
+
+See [docs/runtime-attack-graph.md](docs/runtime-attack-graph.md).
+
 ## GitHub Code Scanning
 
 Generate SARIF for GitHub Code Scanning:
@@ -221,6 +251,15 @@ JSONL records are intentionally simple:
 
 Secret-looking argument fields are redacted during import.
 
+Runtime analysis can also use optional tool outputs:
+
+```jsonl
+{"type":"tool_call","id":"tool-2","timestamp":"2026-05-27T10:00:04.000Z","toolName":"fetch_url","arguments":{"url":"https://example.com/task.md"},"status":"success","resultText":"Fetched page text"}
+{"type":"tool_call","id":"tool-3","timestamp":"2026-05-27T10:00:05.000Z","toolName":"read_secret","arguments":{"name":"DEPLOY_TOKEN"},"status":"success","result":{"metadata":{"token":"demo-secret"}}}
+```
+
+Secret-looking keys inside structured `result` values are redacted during import.
+
 ## Why This Exists
 
 Agent ecosystems are moving fast: MCP servers, skills, coding agents, memory systems, evals, and local automation are becoming normal developer infrastructure. Teams need a small local tool that can inspect the practical risk surface before adopting or shipping agent workflows.
@@ -247,7 +286,7 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v0.6: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, MCP admission decisions, tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v0.7: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, MCP admission decisions, runtime attack graph analysis, tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.

@@ -65,6 +65,8 @@ export const ToolCallSchema = z
     status: z.enum(["success", "error", "blocked", "unknown"]),
     durationMs: z.number().int().nonnegative().optional(),
     resultSummary: z.string().optional(),
+    resultText: z.string().optional(),
+    result: JsonValueSchema.optional(),
     error: z.string().optional()
   })
   .strict();

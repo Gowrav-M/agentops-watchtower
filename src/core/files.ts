@@ -18,6 +18,7 @@ export interface WatchtowerPaths {
   mcpBaselineDiffJson: string;
   mcpInventoryJson: string;
   mcpAdmissionJson: string;
+  attackGraphJson: string;
   evidenceBundleJson: string;
 }
 
@@ -42,6 +43,7 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     mcpBaselineDiffJson: join(reportsDir, "mcp-baseline-diff.json"),
     mcpInventoryJson: join(reportsDir, "mcp-inventory.json"),
     mcpAdmissionJson: join(reportsDir, "mcp-admission.json"),
+    attackGraphJson: join(reportsDir, "attack-graph.json"),
     evidenceBundleJson: join(reportsDir, "evidence-bundle.json")
   };
 }

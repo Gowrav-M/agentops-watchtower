@@ -9,6 +9,7 @@ flowchart LR
   CLI --> Inventory["MCP config inventory"]
   CLI --> Baseline["MCP baseline diff"]
   CLI --> Admission["MCP admission gate"]
+  CLI --> AttackGraph["Runtime attack graph"]
   CLI --> Evidence["Evidence bundle"]
   Importer --> Runs["Local JSONL runs"]
   Scanner --> Findings["Risk findings"]
@@ -17,6 +18,8 @@ flowchart LR
   Findings --> Admission
   Admission --> Evidence
   Runs --> Evals["Deterministic evals"]
+  Runs --> AttackGraph
+  AttackGraph --> Findings
   Findings --> Report["Report builder"]
   Evals --> Report
   Report --> Markdown["Markdown"]
@@ -39,9 +42,9 @@ flowchart LR
 
 ## Storage
 
-v0.3 stores normalized runs in `.watchtower/runs/runs.jsonl`. Each line is one validated `AgentRun`.
+v0.7 stores normalized runs in `.watchtower/runs/runs.jsonl`. Each line is one validated `AgentRun`.
 
-Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. Reports, OTel-style spans, SARIF, and scan outputs are written under `.watchtower/reports/`.
+Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. Reports, runtime attack graphs, OTel-style spans, SARIF, and scan outputs are written under `.watchtower/reports/`.
 
 ## Main Modules
 
@@ -49,6 +52,7 @@ Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. 
 - `src/core/importer.ts`: JSONL and Markdown transcript ingestion.
 - `src/core/admission.ts`: allow/review/deny MCP admission reports.
 - `src/core/evidence.ts`: tamper-evident evidence bundles and verification.
+- `src/core/attackGraph.ts`: runtime tool-chain classification, graph edges, and attack-path findings.
 - `src/core/mcpScanner.ts`: MCP descriptor risk checks and tool-poisoning metadata scan.
 - `src/core/mcpInventory.ts`: local MCP client config discovery and launch-risk analysis.
 - `src/core/mcpBaseline.ts`: deterministic MCP tool fingerprint baselines and drift findings.

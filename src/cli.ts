@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { createAdmissionReport, type AdmissionCheck } from "./core/admission.js";
+import { analyzeRuns, type AttackGraphContext } from "./core/attackGraph.js";
 import { evaluateRuns } from "./core/evaluator.js";
 import { createEvidenceBundle, readAdmissionDecision, verifyEvidenceBundle, type EvidenceArtifactInput } from "./core/evidence.js";
 import {
@@ -46,7 +47,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.6.0");
+    .version("0.7.0");
 
   program
     .command("init")
@@ -330,20 +331,63 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     });
 
   program
+    .command("analyze-run")
+    .option("-t, --trace <trace>", "Analyze this trace instead of stored runs.")
+    .option("-m, --mcp <descriptor>", "MCP descriptor JSON to use as runtime classification context.")
+    .option("-c, --config <config...>", "MCP client config file(s) to use as runtime classification context.")
+    .option("--fail-on <severity>", "Exit non-zero when runtime attack graph findings meet this severity.")
+    .option("--sarif", "Also write GitHub code scanning SARIF output.")
+    .description("Build a deterministic runtime attack graph from agent tool-call traces.")
+    .action(
+      async (options: { trace?: string; mcp?: string; config?: string[]; failOn?: string; sarif?: boolean }) => {
+        const paths = await ensureWatchtowerDirs(ctx.cwd);
+        const watchtowerConfig = await loadWatchtowerConfig(ctx.cwd);
+        const runs = await loadRunsForCommand(ctx.cwd, options.trace);
+        const graphContext = await loadAttackGraphContext(ctx.cwd, paths, options.mcp, options.config, watchtowerConfig.policy);
+        const graph = analyzeRuns(runs, graphContext);
+        await writeJsonFile(paths.attackGraphJson, graph);
+        if (options.sarif === true) {
+          await writeJsonFile(
+            paths.sarifJson,
+            exportSarif(graph.findings, {
+              ...(options.trace === undefined ? {} : { sourceUri: sourceUri(ctx.cwd, resolve(ctx.cwd, options.trace)) }),
+              invocationCommandLine: "agentops-watchtower analyze-run --sarif"
+            })
+          );
+          ctx.stdout(`Wrote ${paths.sarifJson}`);
+        }
+        ctx.stdout(`Analyzed ${graph.summary.toolCalls} tool calls. Runtime findings: ${graph.summary.findings}.`);
+        ctx.stdout(`Wrote ${paths.attackGraphJson}`);
+        const failOn = parseSeverityOption(options.failOn) ?? watchtowerConfig.policy.failOn;
+        if (shouldFailForFindings(graph.findings, failOn)) {
+          throw new Error(summarizePolicyFailure(graph.findings, failOn));
+        }
+      }
+    );
+
+  program
     .command("report")
     .option("-t, --trace <trace>", "Import this trace before generating the report.")
     .option("-m, --mcp <descriptor>", "Scan this MCP descriptor and include findings.")
+    .option("--analyze", "Include runtime attack graph findings from local runs or the provided trace.")
     .option("--fail-on <severity>", "Exit non-zero when report findings meet this severity.")
     .description("Generate Markdown, HTML, and JSON reports from local runs and optional MCP scan findings.")
-    .action(async (options: { trace?: string; mcp?: string; failOn?: string }) => {
+    .action(async (options: { trace?: string; mcp?: string; analyze?: boolean; failOn?: string }) => {
       const paths = await ensureWatchtowerDirs(ctx.cwd);
       const config = await loadWatchtowerConfig(ctx.cwd);
       const runs = await loadRunsForCommand(ctx.cwd, options.trace);
       const mcpFindings = await loadMcpFindings(ctx.cwd, options.mcp, config.policy);
+      const attackGraph =
+        options.analyze === true
+          ? analyzeRuns(runs, await loadAttackGraphContext(ctx.cwd, paths, options.mcp, undefined, config.policy))
+          : undefined;
+      if (attackGraph !== undefined) {
+        await writeJsonFile(paths.attackGraphJson, attackGraph);
+      }
       const evalResults = evaluateRuns(runs);
       const report = createWatchtowerReport({
         runs,
-        findings: [...runs.flatMap((run) => run.findings), ...mcpFindings],
+        findings: [...runs.flatMap((run) => run.findings), ...mcpFindings, ...(attackGraph?.findings ?? [])],
         evalResults
       });
       await writeReportFiles(paths, report, renderMarkdownReport(report), renderHtmlReport(report));
@@ -373,21 +417,28 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     .action(async () => {
       const paths = await ensureWatchtowerDirs(ctx.cwd);
       const tracePath = bundledPath("examples", "traces", "codex-session.jsonl");
+      const attackTracePath = bundledPath("examples", "traces", "source-to-sink.jsonl");
       const mcpPath = bundledPath("examples", "mcp", "risky-tools.json");
       const safeMcpPath = bundledPath("examples", "mcp", "safe-tools.json");
       const run = await importTraceFile(tracePath);
+      const attackRun = await importTraceFile(attackTracePath);
       const mcpScan = await scanMcpDescriptorFile(mcpPath);
       const safeMcpScan = await scanMcpDescriptorFile(safeMcpPath);
-      const evalResults = evaluateRuns([run]);
+      const attackGraph = analyzeRuns([attackRun]);
+      const demoRuns = [run, attackRun];
+      const evalResults = evaluateRuns(demoRuns);
       const report = createWatchtowerReport({
-        runs: [run],
-        findings: [...run.findings, ...mcpScan.findings],
+        runs: demoRuns,
+        findings: [...demoRuns.flatMap((demoRun) => demoRun.findings), ...mcpScan.findings, ...attackGraph.findings],
         evalResults
       });
 
       await appendRunJsonl(paths.runsJsonl, run);
+      await appendRunJsonl(paths.runsJsonl, attackRun);
       await writeJsonFile(join(paths.runsDir, `${run.id}.json`), run);
+      await writeJsonFile(join(paths.runsDir, `${attackRun.id}.json`), attackRun);
       await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), mcpScan);
+      await writeJsonFile(paths.attackGraphJson, attackGraph);
       await writeJsonFile(paths.mcpBaselineJson, createMcpBaseline(safeMcpScan.tools, { source: "examples/mcp/safe-tools.json" }));
       await writeJsonFile(paths.sarifJson, exportSarif(mcpScan.findings, { sourceUri: "examples/mcp/risky-tools.json" }));
       await writeReportFiles(paths, report, renderMarkdownReport(report), renderHtmlReport(report));
@@ -441,7 +492,7 @@ async function runDoctor(cwd: string): Promise<DoctorCheck[]> {
     try {
       const raw = JSON.parse(await readFile(paths.config, "utf8")) as unknown;
       const ok = isConfigRecord(raw);
-      checks.push({ name: "config", ok, message: ok ? "config.json is valid enough for v0.3" : "config.json is malformed" });
+      checks.push({ name: "config", ok, message: ok ? "config.json is valid enough for v0.7" : "config.json is malformed" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
       checks.push({ name: "config", ok: false, message });
@@ -479,6 +530,33 @@ async function loadMcpFindings(
   return scan.findings;
 }
 
+async function loadAttackGraphContext(
+  cwd: string,
+  paths: ReturnType<typeof getWatchtowerPaths>,
+  descriptor: string | undefined,
+  configs: string[] | undefined,
+  options: McpScanOptions
+): Promise<AttackGraphContext> {
+  const descriptorScan =
+    descriptor === undefined ? undefined : await scanMcpDescriptorFile(resolve(cwd, descriptor), options);
+  if (descriptorScan !== undefined) {
+    await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), descriptorScan);
+  }
+
+  const inventory =
+    configs === undefined || configs.length === 0
+      ? undefined
+      : await inventoryMcpConfigFiles(explicitMcpConfigCandidates(configs.map((configPath) => resolve(cwd, configPath))));
+  if (inventory !== undefined) {
+    await writeJsonFile(paths.mcpInventoryJson, inventory);
+  }
+
+  return {
+    ...(descriptorScan === undefined ? {} : { tools: descriptorScan.tools }),
+    ...(inventory === undefined ? {} : { inventory })
+  };
+}
+
 function bundledPath(...segments: string[]): string {
   return join(packageRoot, ...segments);
 }
@@ -494,6 +572,7 @@ async function existingEvidenceArtifacts(paths: ReturnType<typeof getWatchtowerP
     { name: "mcp-inventory", path: paths.mcpInventoryJson },
     { name: "mcp-scan", path: join(paths.reportsDir, "mcp-scan.json") },
     { name: "mcp-baseline-diff", path: paths.mcpBaselineDiffJson },
+    { name: "attack-graph", path: paths.attackGraphJson },
     { name: "watchtower-sarif", path: paths.sarifJson },
     { name: "watchtower-report", path: paths.reportJson }
   ];

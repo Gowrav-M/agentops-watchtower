@@ -31,6 +31,7 @@ Artifacts can include:
 - `mcp-inventory.json`
 - `mcp-scan.json`
 - `mcp-baseline-diff.json`
+- `attack-graph.json`
 - `watchtower.sarif`
 - `watchtower-report.json`
 

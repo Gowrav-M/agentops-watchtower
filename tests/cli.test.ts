@@ -186,6 +186,54 @@ describe("cli", () => {
     expect(admission).toContain("\"decision\": \"deny\"");
   });
 
+  it("analyze-run writes an attack graph and fails policy for source-to-sink runtime chains", async () => {
+    const cwd = await makeTempDir();
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await expect(
+      cli.parseAsync(
+        [
+          "node",
+          "watchtower",
+          "analyze-run",
+          "--trace",
+          join(import.meta.dirname, "..", "examples", "traces", "source-to-sink.jsonl"),
+          "--sarif",
+          "--fail-on",
+          "high"
+        ],
+        { from: "node" }
+      )
+    ).rejects.toThrow(/Policy threshold failed/u);
+
+    const graph = await readFile(join(cwd, ".watchtower", "reports", "attack-graph.json"), "utf8");
+    const sarif = await readFile(join(cwd, ".watchtower", "reports", "watchtower.sarif"), "utf8");
+    expect(graph).toContain("runtime.secret_to_external_sink");
+    expect(sarif).toContain("runtime.secret_to_external_sink");
+  });
+
+  it("report --analyze includes runtime attack-path findings", async () => {
+    const cwd = await makeTempDir();
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await expect(
+      cli.parseAsync(
+        [
+          "node",
+          "watchtower",
+          "report",
+          "--trace",
+          join(import.meta.dirname, "..", "examples", "traces", "source-to-sink.jsonl"),
+          "--analyze"
+        ],
+        { from: "node" }
+      )
+    ).rejects.toThrow(/Policy threshold failed/u);
+
+    const report = await readFile(join(cwd, ".watchtower", "reports", "watchtower-report.json"), "utf8");
+    expect(report).toContain("runtime.secret_to_external_sink");
+  });
+
   it("attest-mcp creates and verifies a tamper-evident evidence bundle", async () => {
     const cwd = await makeTempDir();
     const output: string[] = [];

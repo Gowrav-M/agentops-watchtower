@@ -5,6 +5,7 @@ import {
   type AgentRun,
   type AgentStep,
   type JsonValue,
+  JsonValueSchema,
   type ToolCall
 } from "./schemas.js";
 import { redactSecrets } from "./redaction.js";
@@ -38,6 +39,8 @@ interface ToolCallRecord {
   status?: "success" | "error" | "blocked" | "unknown";
   durationMs?: number;
   resultSummary?: string;
+  resultText?: string;
+  result?: JsonValue;
   error?: string;
 }
 
@@ -95,6 +98,8 @@ export function importJsonlTrace(content: string, sourceName = "trace.jsonl"): A
         status: record.status ?? "unknown",
         ...(record.durationMs === undefined ? {} : { durationMs: record.durationMs }),
         ...(record.resultSummary === undefined ? {} : { resultSummary: record.resultSummary }),
+        ...(record.resultText === undefined ? {} : { resultText: record.resultText }),
+        ...(record.result === undefined ? {} : { result: redactSecrets(record.result) }),
         ...(record.error === undefined ? {} : { error: record.error })
       });
     }
@@ -224,6 +229,8 @@ function parseTraceRecord(line: string, lineNumber: number): TraceRecord {
     const status = raw["status"];
     const durationMs = raw["durationMs"];
     const resultSummary = raw["resultSummary"];
+    const resultText = raw["resultText"];
+    const result = JsonValueSchema.safeParse(raw["result"]);
     const error = raw["error"];
     if (typeof id !== "string" || typeof toolName !== "string") {
       throw new Error(`Invalid tool_call record at line ${lineNumber}: missing id or toolName`);
@@ -241,6 +248,8 @@ function parseTraceRecord(line: string, lineNumber: number): TraceRecord {
         ? { durationMs }
         : {}),
       ...(typeof resultSummary === "string" ? { resultSummary } : {}),
+      ...(typeof resultText === "string" ? { resultText } : {}),
+      ...(result.success ? { result: result.data } : {}),
       ...(typeof error === "string" ? { error } : {})
     };
   }
