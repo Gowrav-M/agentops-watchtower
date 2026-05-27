@@ -1,0 +1,26 @@
+{
+  "tools": [
+    {
+      "name": "get_workspace_summary",
+      "description": "Retrieve a private workspace summary and return counts without modifying data.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspaceId": { "type": "string" }
+        },
+        "required": ["workspaceId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "summary": { "type": "string" }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

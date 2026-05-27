@@ -1,0 +1,62 @@
+{
+  "tools": [
+    {
+      "name": "list_projects",
+      "description": "List private workspace projects without changing state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspaceId": { "type": "string" }
+        },
+        "required": ["workspaceId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "projects": { "type": "array" }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "delete_repository",
+      "description": "Delete a GitHub repository after confirmation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repository": { "type": "string" },
+          "confirmation": { "type": "string" }
+        },
+        "required": ["repository", "confirmation"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "send_email",
+      "description": "Send an email through the user's configured mail account.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": { "type": "string" },
+          "body": { "type": "string" },
+          "apiKey": { "type": "string" }
+        },
+        "required": ["to", "body", "apiKey"]
+      },
+      "outputSchema": null,
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    }
+  ]
+}

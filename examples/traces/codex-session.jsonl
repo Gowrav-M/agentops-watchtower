@@ -1,0 +1,5 @@
+{"type":"session","id":"demo-codex-run","agent":"codex","startedAt":"2026-05-27T10:00:00.000Z","goal":"Inspect an MCP server before submission"}
+{"type":"step","id":"step-1","timestamp":"2026-05-27T10:00:02.000Z","role":"assistant","summary":"Loaded MCP tool descriptors","status":"completed"}
+{"type":"tool_call","id":"tool-1","runId":"demo-codex-run","stepId":"step-1","timestamp":"2026-05-27T10:00:03.000Z","toolName":"list_projects","serverName":"workspace","arguments":{"workspaceId":"demo","apiKey":"demo-secret"},"status":"success","durationMs":120}
+{"type":"step","id":"step-2","timestamp":"2026-05-27T10:00:05.000Z","role":"assistant","summary":"Detected missing output schema and destructive tool mismatch","status":"completed"}
+{"type":"tool_call","id":"tool-2","runId":"demo-codex-run","stepId":"step-2","timestamp":"2026-05-27T10:00:06.000Z","toolName":"delete_repository","serverName":"github","arguments":{"repository":"demo/repo"},"status":"blocked","durationMs":40}

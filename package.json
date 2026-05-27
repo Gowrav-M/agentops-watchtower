@@ -1,0 +1,51 @@
+{
+  "name": "agentops-watchtower",
+  "version": "0.1.0",
+  "description": "Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.",
+  "type": "module",
+  "bin": {
+    "agentops-watchtower": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "demo": "tsx src/cli.ts demo",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "agentops",
+    "mcp",
+    "ai-agents",
+    "observability",
+    "evals",
+    "security",
+    "cli"
+  ],
+  "author": "Gowrav M",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.18.12",
+    "eslint": "^9.39.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^4.1.7"
+  }
+}

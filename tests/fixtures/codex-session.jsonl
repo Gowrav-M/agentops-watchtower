@@ -1,0 +1,4 @@
+{"type":"session","id":"run-1","agent":"codex","startedAt":"2026-05-27T10:00:00.000Z","goal":"Inspect and scan MCP tools"}
+{"type":"step","id":"step-1","runId":"run-1","timestamp":"2026-05-27T10:00:02.000Z","role":"assistant","summary":"Listed tools","status":"completed"}
+{"type":"tool_call","id":"tool-1","runId":"run-1","stepId":"step-1","timestamp":"2026-05-27T10:00:03.000Z","toolName":"list_projects","serverName":"workspace","arguments":{"workspaceId":"demo","apiKey":"secret-demo"},"status":"success","durationMs":120}
+{"type":"step","id":"step-2","runId":"run-1","timestamp":"2026-05-27T10:00:05.000Z","role":"assistant","summary":"Attempted deletion","status":"failed","error":"confirmation missing"}

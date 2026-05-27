@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "rootDir": ".",
+    "types": ["node", "vitest"]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts", "eslint.config.js"],
+  "exclude": ["dist", "node_modules", "coverage"]
+}
