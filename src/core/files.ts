@@ -15,6 +15,9 @@ export interface WatchtowerPaths {
   reportJson: string;
   otelSpansJson: string;
   sarifJson: string;
+  agentBomJson: string;
+  agentBomMarkdown: string;
+  agentBomCycloneDxJson: string;
   mcpBaselineDiffJson: string;
   mcpInventoryJson: string;
   mcpAdmissionJson: string;
@@ -41,6 +44,9 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     reportJson: join(reportsDir, "watchtower-report.json"),
     otelSpansJson: join(reportsDir, "otel-spans.json"),
     sarifJson: join(reportsDir, "watchtower.sarif"),
+    agentBomJson: join(reportsDir, "agent-bom.json"),
+    agentBomMarkdown: join(reportsDir, "agent-bom.md"),
+    agentBomCycloneDxJson: join(reportsDir, "agent-bom.cdx.json"),
     mcpBaselineDiffJson: join(reportsDir, "mcp-baseline-diff.json"),
     mcpInventoryJson: join(reportsDir, "mcp-inventory.json"),
     mcpAdmissionJson: join(reportsDir, "mcp-admission.json"),

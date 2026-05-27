@@ -19,6 +19,7 @@ agentops-watchtower scan-mcp tools.json --sarif
 agentops-watchtower baseline-mcp tools.json
 agentops-watchtower diff-mcp tools.json
 agentops-watchtower inventory-mcp
+agentops-watchtower agent-bom --config .mcp.json --descriptor tools.json --cyclonedx
 agentops-watchtower admit-mcp --descriptor tools.json --config .mcp.json
 agentops-watchtower gate-mcp --config .mcp.json --server github --descriptor tools.json
 agentops-watchtower analyze-run --trace trace.jsonl --sarif

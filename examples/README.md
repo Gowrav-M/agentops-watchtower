@@ -21,6 +21,7 @@ npm run dev -- scan-mcp examples/mcp/risky-tools.json --sarif
 npm run dev -- baseline-mcp examples/mcp/safe-tools.json
 npm run dev -- diff-mcp examples/mcp/safe-tools.json
 npm run dev -- inventory-mcp examples/mcp/sample-client-config.json --sarif
+npm run dev -- agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --cyclonedx
 npm run dev -- admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --sarif
 npm run dev -- gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json --sarif
 npm run dev -- analyze-run --trace examples/traces/source-to-sink.jsonl --sarif

@@ -29,6 +29,9 @@ The demo writes local files under `.watchtower/`:
 - `.watchtower/reports/watchtower-report.md`
 - `.watchtower/reports/watchtower-report.html`
 - `.watchtower/reports/watchtower-report.json`
+- `.watchtower/reports/agent-bom.json`
+- `.watchtower/reports/agent-bom.md`
+- `.watchtower/reports/agent-bom.cdx.json`
 - `.watchtower/reports/mcp-scan.json`
 - `.watchtower/reports/mcp-inventory.json`
 - `.watchtower/reports/mcp-admission.json`
@@ -52,6 +55,7 @@ agentops-watchtower diff-mcp examples/mcp/safe-tools.json
 agentops-watchtower inventory-mcp
 agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
 agentops-watchtower gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json
+agentops-watchtower agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --cyclonedx
 agentops-watchtower attest-mcp --subject safe-docs
 agentops-watchtower verify-attestation
 agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --sarif
@@ -74,6 +78,7 @@ agentops-watchtower doctor
 | `inventory-mcp [configs...]` | Inventories local MCP client configs and flags risky launch settings. |
 | `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
 | `gate-mcp` | Preflights one configured MCP server and blocks unsafe launch plans. |
+| `agent-bom` | Exports an Agent Bill of Materials for MCP configs, servers, tools, and findings. |
 | `attest-mcp` | Creates a tamper-evident local evidence bundle from Watchtower reports. |
 | `verify-attestation` | Verifies evidence bundle integrity and artifact hashes. |
 | `analyze-run` | Builds a runtime attack graph from agent tool-call traces. |
@@ -108,6 +113,7 @@ npx agentops-watchtower diff-mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower inventory-mcp --fail-on high
 npx agentops-watchtower admit-mcp --descriptor examples/mcp/risky-tools.json --config examples/mcp/sample-client-config.json --fail-on high
 npx agentops-watchtower gate-mcp --config examples/mcp/sample-client-config.json --server review-this-installer --fail-on high
+npx agentops-watchtower agent-bom --config examples/mcp/sample-client-config.json --descriptor examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --fail-on high
 ```
 
@@ -208,6 +214,29 @@ The gate filters config findings to the selected server, adds descriptor and bas
 v0.8 records the approved launch plan but does not execute arbitrary MCP server commands. Protocol proxy/wrapper execution is a later layer.
 
 See [docs/mcp-gate.md](docs/mcp-gate.md).
+
+## Agent Bill of Materials
+
+Create a local inventory artifact for agent/MCP governance:
+
+```bash
+npx agentops-watchtower agent-bom \
+  --config .mcp.json \
+  --descriptor mcp-tools.json \
+  --cyclonedx
+```
+
+Watchtower writes:
+
+```text
+.watchtower/reports/agent-bom.json
+.watchtower/reports/agent-bom.md
+.watchtower/reports/agent-bom.cdx.json
+```
+
+The AgentBOM records MCP config sources, configured servers, tool fingerprints, annotation posture, and findings. The CycloneDX-compatible export lets teams carry agent/MCP inventory into existing supply-chain and governance workflows.
+
+See [docs/agent-bom.md](docs/agent-bom.md).
 
 ## Evidence Bundles
 
@@ -318,11 +347,12 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v0.8: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, MCP admission decisions, MCP preflight gate reports, runtime attack graph analysis, tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v0.9: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, runtime attack graph analysis, tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.
 - MCP protocol proxy/wrapper mode.
+- Signed AgentBOM/evidence bundle flow.
 - GitHub Action summary comments and packaged action.
 - Optional key-backed signatures for evidence bundles.
 - Browser-based local report viewer.

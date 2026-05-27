@@ -7,6 +7,7 @@ flowchart LR
   CLI["CLI commands"] --> Importer["Trace importer"]
   CLI --> Scanner["MCP scanner"]
   CLI --> Inventory["MCP config inventory"]
+  CLI --> AgentBOM["AgentBOM export"]
   CLI --> Baseline["MCP baseline diff"]
   CLI --> Admission["MCP admission gate"]
   CLI --> Gate["MCP preflight gate"]
@@ -15,6 +16,8 @@ flowchart LR
   Importer --> Runs["Local JSONL runs"]
   Scanner --> Findings["Risk findings"]
   Inventory --> Findings
+  Inventory --> AgentBOM
+  Scanner --> AgentBOM
   Baseline --> Findings
   Findings --> Admission
   Findings --> Gate
@@ -47,7 +50,7 @@ flowchart LR
 
 v0.7 stores normalized runs in `.watchtower/runs/runs.jsonl`. Each line is one validated `AgentRun`.
 
-Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. Reports, MCP gate decisions, runtime attack graphs, OTel-style spans, SARIF, and scan outputs are written under `.watchtower/reports/`.
+Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. Reports, AgentBOM artifacts, MCP gate decisions, runtime attack graphs, OTel-style spans, SARIF, and scan outputs are written under `.watchtower/reports/`.
 
 ## Main Modules
 
@@ -55,6 +58,7 @@ Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. 
 - `src/core/importer.ts`: JSONL and Markdown transcript ingestion.
 - `src/core/admission.ts`: allow/review/deny MCP admission reports.
 - `src/core/evidence.ts`: tamper-evident evidence bundles and verification.
+- `src/core/agentBom.ts`: Agent Bill of Materials and CycloneDX-compatible export.
 - `src/core/mcpGate.ts`: selected-server preflight gate and launch-plan reports.
 - `src/core/attackGraph.ts`: runtime tool-chain classification, graph edges, and attack-path findings.
 - `src/core/mcpScanner.ts`: MCP descriptor risk checks and tool-poisoning metadata scan.

@@ -238,6 +238,32 @@ describe("cli", () => {
     expect(gate).toContain("\"mode\": \"blocked\"");
   });
 
+  it("agent-bom writes JSON, Markdown, and CycloneDX inventory artifacts", async () => {
+    const cwd = await makeTempDir();
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await cli.parseAsync(
+      [
+        "node",
+        "watchtower",
+        "agent-bom",
+        "--config",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-client-config.json"),
+        "--descriptor",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-tools.json"),
+        "--cyclonedx"
+      ],
+      { from: "node" }
+    );
+
+    const json = await readFile(join(cwd, ".watchtower", "reports", "agent-bom.json"), "utf8");
+    const markdown = await readFile(join(cwd, ".watchtower", "reports", "agent-bom.md"), "utf8");
+    const cycloneDx = await readFile(join(cwd, ".watchtower", "reports", "agent-bom.cdx.json"), "utf8");
+    expect(json).toContain("\"schemaVersion\": 1");
+    expect(markdown).toContain("Agent Bill of Materials");
+    expect(cycloneDx).toContain("\"bomFormat\": \"CycloneDX\"");
+  });
+
   it("analyze-run writes an attack graph and fails policy for source-to-sink runtime chains", async () => {
     const cwd = await makeTempDir();
     const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });

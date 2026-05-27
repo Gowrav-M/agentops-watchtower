@@ -49,6 +49,9 @@ jobs:
       - name: MCP inventory
         run: node dist/cli.js inventory-mcp examples/mcp/safe-client-config.json --fail-on high --sarif
 
+      - name: AgentBOM
+        run: node dist/cli.js agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --fail-on high --cyclonedx
+
       - name: MCP admission
         run: node dist/cli.js admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --fail-on high --sarif
 

@@ -58,6 +58,8 @@ v0.7 adds runtime attack graph analysis. This addresses a deeper gap surfaced by
 
 v0.8 adds a selected-server MCP preflight gate. This starts the enforcement path without overbuilding a protocol proxy: one configured server is inventoried, checked against descriptor and baseline evidence, and turned into a blocked or dry-run launch plan.
 
+v0.9 adds AgentBOM export. Current guidance around shadow AI, OpenSSF AI supply-chain security, and CycloneDX AI/ML-BOM points toward machine-readable inventory as a governance primitive. Watchtower now emits a local Agent Bill of Materials plus a CycloneDX-compatible component view for MCP configs, servers, tools, fingerprints, and findings.
+
 ## Source References
 
 - OpenTelemetry GenAI/MCP semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/
@@ -65,3 +67,5 @@ v0.8 adds a selected-server MCP preflight gate. This starts the enforcement path
 - OWASP MCP Top 10: https://owasp.org/www-project-mcp-top-10/
 - GitHub SARIF upload docs: https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/integrate-with-existing-tools/uploading-a-sarif-file-to-github
 - Microsoft indirect prompt injection defense guidance: https://learn.microsoft.com/en-us/security/zero-trust/sfi/defend-indirect-prompt-injection
+- CycloneDX specification overview: https://cyclonedx.org/specification/overview/
+- CycloneDX AI/ML-BOM capability: https://cyclonedx.org/capabilities/mlbom/

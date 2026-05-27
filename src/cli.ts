@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { createAdmissionReport, type AdmissionCheck } from "./core/admission.js";
+import { createAgentBom, exportCycloneDxAgentBom, renderAgentBomMarkdown } from "./core/agentBom.js";
 import { analyzeRuns, type AttackGraphContext } from "./core/attackGraph.js";
 import { evaluateRuns } from "./core/evaluator.js";
 import { createEvidenceBundle, readAdmissionDecision, verifyEvidenceBundle, type EvidenceArtifactInput } from "./core/evidence.js";
@@ -48,7 +49,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.8.0");
+    .version("0.9.0");
 
   program
     .command("init")
@@ -361,6 +362,49 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     );
 
   program
+    .command("agent-bom")
+    .requiredOption("-c, --config <config...>", "MCP client config file(s) to include in the Agent Bill of Materials.")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to include as tool inventory.")
+    .option("--cyclonedx", "Also write a CycloneDX-compatible AgentBOM export.")
+    .option("--fail-on <severity>", "Exit non-zero when AgentBOM findings meet this severity.")
+    .description("Generate a local Agent Bill of Materials for MCP servers, tools, config sources, and findings.")
+    .action(async (options: { config: string[]; descriptor?: string; cyclonedx?: boolean; failOn?: string }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const watchtowerConfig = await loadWatchtowerConfig(ctx.cwd);
+      const inventory = await inventoryMcpConfigFiles(
+        explicitMcpConfigCandidates(options.config.map((configPath) => resolve(ctx.cwd, configPath)))
+      );
+      await writeJsonFile(paths.mcpInventoryJson, inventory);
+
+      const descriptorScan =
+        options.descriptor === undefined
+          ? undefined
+          : await scanMcpDescriptorFile(resolve(ctx.cwd, options.descriptor), watchtowerConfig.policy);
+      if (descriptorScan !== undefined) {
+        await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), descriptorScan);
+      }
+
+      const bom = createAgentBom({
+        inventory,
+        ...(descriptorScan === undefined ? {} : { tools: descriptorScan.tools, findings: descriptorScan.findings })
+      });
+      await writeJsonFile(paths.agentBomJson, bom);
+      await writeFile(paths.agentBomMarkdown, renderAgentBomMarkdown(bom), "utf8");
+      if (options.cyclonedx === true) {
+        await writeJsonFile(paths.agentBomCycloneDxJson, exportCycloneDxAgentBom(bom));
+        ctx.stdout(`Wrote ${paths.agentBomCycloneDxJson}`);
+      }
+      ctx.stdout(`Wrote ${paths.agentBomJson}`);
+      ctx.stdout(`Wrote ${paths.agentBomMarkdown}`);
+      ctx.stdout(`AgentBOM inventory: ${bom.summary.mcpServers} servers, ${bom.summary.mcpTools} tools, ${bom.summary.findings} findings.`);
+
+      const failOn = parseSeverityOption(options.failOn) ?? watchtowerConfig.policy.failOn;
+      if (shouldFailForFindings(bom.findings, failOn)) {
+        throw new Error(summarizePolicyFailure(bom.findings, failOn));
+      }
+    });
+
+  program
     .command("attest-mcp")
     .option("--subject <subject>", "Human-readable subject for the evidence bundle.")
     .description("Create a tamper-evident evidence bundle from Watchtower MCP reports.")
@@ -654,6 +698,9 @@ async function existingEvidenceArtifacts(paths: ReturnType<typeof getWatchtowerP
     { name: "mcp-scan", path: join(paths.reportsDir, "mcp-scan.json") },
     { name: "mcp-baseline-diff", path: paths.mcpBaselineDiffJson },
     { name: "mcp-gate", path: paths.mcpGateJson },
+    { name: "agent-bom", path: paths.agentBomJson },
+    { name: "agent-bom-markdown", path: paths.agentBomMarkdown },
+    { name: "agent-bom-cyclonedx", path: paths.agentBomCycloneDxJson },
     { name: "attack-graph", path: paths.attackGraphJson },
     { name: "watchtower-sarif", path: paths.sarifJson },
     { name: "watchtower-report", path: paths.reportJson }
