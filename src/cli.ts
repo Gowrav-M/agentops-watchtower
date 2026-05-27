@@ -14,7 +14,9 @@ import {
   writeReportFiles
 } from "./core/files.js";
 import { importTraceFile } from "./core/importer.js";
-import { scanMcpDescriptorFile } from "./core/mcpScanner.js";
+import { scanMcpDescriptorFile, type McpScanOptions } from "./core/mcpScanner.js";
+import { exportOtelSpans } from "./core/otelExporter.js";
+import { loadWatchtowerConfig, shouldFailForFindings, summarizePolicyFailure } from "./core/policy.js";
 import { createWatchtowerReport } from "./core/report.js";
 import { renderHtmlReport, renderMarkdownReport } from "./core/reportRenderer.js";
 import type { AgentRun, RiskFinding } from "./core/schemas.js";
@@ -39,7 +41,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.1.0");
+    .version("0.2.0");
 
   program
     .command("init")
@@ -56,7 +58,14 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         storage: "local-jsonl",
         runsFile: ".watchtower/runs/runs.jsonl",
         reportsDir: ".watchtower/reports",
-        redaction: "enabled"
+        redaction: "enabled",
+        policy: {
+          failOn: "critical",
+          requireOutputSchema: true,
+          allowDestructiveTools: false,
+          allowOpenWorldTools: true,
+          detectToolPoisoning: true
+        }
       });
       ctx.stdout(`Initialized AgentOps Watchtower at ${paths.root}`);
     });
@@ -76,13 +85,19 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .command("scan-mcp")
     .argument("[descriptor]", "Path to a JSON MCP descriptor file. Defaults to bundled example.")
+    .option("--fail-on <severity>", "Exit non-zero when findings meet this severity: info, low, medium, high, critical.")
     .description("Scan MCP tool descriptors for risky annotations, sensitive inputs, and missing schemas.")
-    .action(async (descriptor?: string) => {
+    .action(async (descriptor: string | undefined, options: { failOn?: string }) => {
       const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const config = await loadWatchtowerConfig(ctx.cwd);
       const descriptorPath = descriptor === undefined ? bundledPath("examples", "mcp", "risky-tools.json") : resolve(ctx.cwd, descriptor);
-      const result = await scanMcpDescriptorFile(descriptorPath);
+      const result = await scanMcpDescriptorFile(descriptorPath, config.policy);
       await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), result);
       ctx.stdout(`Scanned ${result.tools.length} MCP tools. Findings: ${result.findings.length}.`);
+      const failOn = parseSeverityOption(options.failOn) ?? config.policy.failOn;
+      if (shouldFailForFindings(result.findings, failOn)) {
+        throw new Error(summarizePolicyFailure(result.findings, failOn));
+      }
     });
 
   program
@@ -103,11 +118,13 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     .command("report")
     .option("-t, --trace <trace>", "Import this trace before generating the report.")
     .option("-m, --mcp <descriptor>", "Scan this MCP descriptor and include findings.")
+    .option("--fail-on <severity>", "Exit non-zero when report findings meet this severity.")
     .description("Generate Markdown, HTML, and JSON reports from local runs and optional MCP scan findings.")
-    .action(async (options: { trace?: string; mcp?: string }) => {
+    .action(async (options: { trace?: string; mcp?: string; failOn?: string }) => {
       const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const config = await loadWatchtowerConfig(ctx.cwd);
       const runs = await loadRunsForCommand(ctx.cwd, options.trace);
-      const mcpFindings = await loadMcpFindings(ctx.cwd, options.mcp);
+      const mcpFindings = await loadMcpFindings(ctx.cwd, options.mcp, config.policy);
       const evalResults = evaluateRuns(runs);
       const report = createWatchtowerReport({
         runs,
@@ -117,6 +134,22 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
       await writeReportFiles(paths, report, renderMarkdownReport(report), renderHtmlReport(report));
       ctx.stdout(`Wrote ${paths.reportMarkdown}`);
       ctx.stdout(`Wrote ${paths.reportHtml}`);
+      const failOn = parseSeverityOption(options.failOn) ?? config.policy.failOn;
+      if (shouldFailForFindings(report.findings, failOn)) {
+        throw new Error(summarizePolicyFailure(report.findings, failOn));
+      }
+    });
+
+  program
+    .command("export-otel")
+    .option("-t, --trace <trace>", "Export this trace instead of stored runs.")
+    .description("Export local agent runs as OpenTelemetry-style GenAI/MCP span JSON.")
+    .action(async (options: { trace?: string }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const runs = await loadRunsForCommand(ctx.cwd, options.trace);
+      const spans = exportOtelSpans(runs);
+      await writeJsonFile(paths.otelSpansJson, spans);
+      ctx.stdout(`Wrote ${spans.length} OTel-style spans to ${paths.otelSpansJson}`);
     });
 
   program
@@ -214,12 +247,16 @@ async function loadRunsForCommand(cwd: string, trace: string | undefined): Promi
   return readRunsJsonl(paths.runsJsonl);
 }
 
-async function loadMcpFindings(cwd: string, descriptor: string | undefined): Promise<RiskFinding[]> {
+async function loadMcpFindings(
+  cwd: string,
+  descriptor: string | undefined,
+  options: McpScanOptions
+): Promise<RiskFinding[]> {
   if (descriptor === undefined) {
     return [];
   }
 
-  const scan = await scanMcpDescriptorFile(resolve(cwd, descriptor));
+  const scan = await scanMcpDescriptorFile(resolve(cwd, descriptor), options);
   return scan.findings;
 }
 
@@ -235,6 +272,23 @@ function isConfigRecord(value: unknown): boolean {
   return record["schemaVersion"] === 1 && record["storage"] === "local-jsonl";
 }
 
+function parseSeverityOption(value: string | undefined): RiskFinding["severity"] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === "info" || value === "low" || value === "medium" || value === "high" || value === "critical") {
+    return value;
+  }
+
+  throw new Error(`Invalid severity threshold: ${value}`);
+}
+
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === currentFile) {
-  await buildCli().parseAsync(process.argv);
+  try {
+    await buildCli().parseAsync(process.argv);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
 }

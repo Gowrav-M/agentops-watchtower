@@ -41,4 +41,15 @@ describe("cli", () => {
     expect(markdown).toContain("AgentOps Watchtower Report");
     expect(html).toContain("<!doctype html>");
   });
+
+  it("export-otel writes local span JSON", async () => {
+    const cwd = await makeTempDir();
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await cli.parseAsync(["node", "watchtower", "export-otel"], { from: "node" });
+
+    const spans = await readFile(join(cwd, ".watchtower", "reports", "otel-spans.json"), "utf8");
+    expect(spans).toContain("gen_ai.operation.name");
+    expect(spans).toContain("execute_tool");
+  });
 });

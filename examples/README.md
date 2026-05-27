@@ -17,4 +17,5 @@ npm run dev -- demo
 npm run dev -- scan-mcp examples/mcp/risky-tools.json
 npm run dev -- import examples/traces/codex-session.jsonl
 npm run dev -- report --mcp examples/mcp/risky-tools.json
+npm run dev -- export-otel
 ```

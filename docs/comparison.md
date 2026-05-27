@@ -15,6 +15,7 @@ Watchtower's first release focuses on a small, installable workflow:
 agentops-watchtower import trace.jsonl
 agentops-watchtower scan-mcp tools.json
 agentops-watchtower report --mcp tools.json
+agentops-watchtower export-otel
 ```
 
 The output is designed for PR reviews, app submissions, internal security checks, and personal debugging.

@@ -15,11 +15,34 @@ export interface McpScanResult {
   findings: RiskFinding[];
 }
 
+export interface McpScanOptions {
+  requireOutputSchema?: boolean;
+  allowDestructiveTools?: boolean;
+  allowOpenWorldTools?: boolean;
+  detectToolPoisoning?: boolean;
+}
+
+interface NormalizedMcpScanOptions {
+  requireOutputSchema: boolean;
+  allowDestructiveTools: boolean;
+  allowOpenWorldTools: boolean;
+  detectToolPoisoning: boolean;
+}
+
 const DESTRUCTIVE_PATTERN = /\b(delete|destroy|drop|remove|wipe|revoke|overwrite|reset|terminate|purge)\b/i;
 const MUTATING_PATTERN = /\b(create|update|delete|destroy|drop|remove|send|post|publish|write|edit|merge|deploy|run|execute|trigger|enqueue|submit|revoke|overwrite|reset)\b/i;
 const OPEN_WORLD_PATTERN = /\b(email|message|slack|discord|telegram|github|jira|linear|publish|post|tweet|deploy|submit|external|public|internet|webhook)\b/i;
+const TOOL_POISONING_PATTERN =
+  /\b(ignore|forget|override|bypass|disable)\b.{0,80}\b(instructions?|rules?|policy|safety|previous|system)\b|\b(silently|secretly|without\s+user|do\s+not\s+(?:tell|reveal|show))\b|\b(send|exfiltrate|leak|steal)\b.{0,80}\b(secret|token|credential|api\s*key|password|private\s*key)\b/i;
 
-export async function scanMcpDescriptorFile(path: string): Promise<McpScanResult> {
+const DEFAULT_SCAN_OPTIONS: NormalizedMcpScanOptions = {
+  requireOutputSchema: true,
+  allowDestructiveTools: false,
+  allowOpenWorldTools: true,
+  detectToolPoisoning: true
+};
+
+export async function scanMcpDescriptorFile(path: string, options: McpScanOptions = {}): Promise<McpScanResult> {
   const content = await readFile(path, "utf8");
   let raw: unknown;
 
@@ -33,12 +56,13 @@ export async function scanMcpDescriptorFile(path: string): Promise<McpScanResult
   const parsed = McpDescriptorFileSchema.parse(raw);
   const tools = Array.isArray(parsed) ? parsed : parsed.tools;
 
-  return scanMcpTools(tools);
+  return scanMcpTools(tools, options);
 }
 
-export function scanMcpTools(tools: readonly McpToolDescriptor[]): McpScanResult {
+export function scanMcpTools(tools: readonly McpToolDescriptor[], options: McpScanOptions = {}): McpScanResult {
   const normalizedTools = tools.map((tool) => McpToolDescriptorSchema.parse(tool));
-  const findings = normalizedTools.flatMap((tool) => scanTool(tool));
+  const scanOptions = normalizeScanOptions(options);
+  const findings = normalizedTools.flatMap((tool) => scanTool(tool, scanOptions));
 
   return {
     tools: normalizedTools,
@@ -46,7 +70,7 @@ export function scanMcpTools(tools: readonly McpToolDescriptor[]): McpScanResult
   };
 }
 
-function scanTool(tool: McpToolDescriptor): RiskFinding[] {
+function scanTool(tool: McpToolDescriptor, options: NormalizedMcpScanOptions): RiskFinding[] {
   const findings: RiskFinding[] = [];
   const description = tool.description ?? "";
   const behaviorText = `${tool.name} ${description}`;
@@ -115,7 +139,7 @@ function scanTool(tool: McpToolDescriptor): RiskFinding[] {
     );
   }
 
-  if (isDestructive) {
+  if (isDestructive && (destructiveHint !== true || !options.allowDestructiveTools)) {
     findings.push(
       createFinding({
         idSeed: `${tool.name}-destructive`,
@@ -133,7 +157,7 @@ function scanTool(tool: McpToolDescriptor): RiskFinding[] {
     );
   }
 
-  if (isOpenWorld) {
+  if (isOpenWorld && (openWorldHint !== true || !options.allowOpenWorldTools)) {
     findings.push(
       createFinding({
         idSeed: `${tool.name}-open-world`,
@@ -165,7 +189,7 @@ function scanTool(tool: McpToolDescriptor): RiskFinding[] {
     );
   }
 
-  if (!("outputSchema" in tool) || tool.outputSchema === null || tool.outputSchema === undefined) {
+  if (options.requireOutputSchema && (!("outputSchema" in tool) || tool.outputSchema === null || tool.outputSchema === undefined)) {
     findings.push(
       createFinding({
         idSeed: `${tool.name}-missing-output-schema`,
@@ -194,7 +218,33 @@ function scanTool(tool: McpToolDescriptor): RiskFinding[] {
     );
   }
 
+  const poisoningEvidence = options.detectToolPoisoning ? collectToolPoisoningEvidence(tool) : [];
+  if (poisoningEvidence.length > 0) {
+    findings.push(
+      createFinding({
+        idSeed: `${tool.name}-tool-poisoning`,
+        severity: "critical",
+        category: "mcp.tool_poisoning",
+        title: `${tool.name} contains tool-poisoning patterns`,
+        description:
+          "The tool metadata contains instruction-like text that could manipulate an agent through tool descriptions or schemas.",
+        recommendation: "Remove hidden instructions from tool metadata and treat schemas/descriptions as untrusted prompt-injection surfaces.",
+        target: tool.name,
+        evidence: poisoningEvidence
+      })
+    );
+  }
+
   return findings;
+}
+
+function normalizeScanOptions(options: McpScanOptions): NormalizedMcpScanOptions {
+  return {
+    requireOutputSchema: options.requireOutputSchema ?? DEFAULT_SCAN_OPTIONS.requireOutputSchema,
+    allowDestructiveTools: options.allowDestructiveTools ?? DEFAULT_SCAN_OPTIONS.allowDestructiveTools,
+    allowOpenWorldTools: options.allowOpenWorldTools ?? DEFAULT_SCAN_OPTIONS.allowOpenWorldTools,
+    detectToolPoisoning: options.detectToolPoisoning ?? DEFAULT_SCAN_OPTIONS.detectToolPoisoning
+  };
 }
 
 function collectSensitiveInputFields(inputSchema: JsonValue | undefined): string[] {
@@ -224,5 +274,40 @@ function collectSensitiveKeys(value: JsonValue, path: readonly string[], fields:
       fields.add(nextPath.join("."));
     }
     collectSensitiveKeys(child, nextPath, fields);
+  }
+}
+
+function collectToolPoisoningEvidence(tool: McpToolDescriptor): string[] {
+  const evidence: string[] = [];
+  const candidates: string[] = [tool.description ?? ""];
+  if (tool.inputSchema !== undefined) {
+    collectStringValues(tool.inputSchema, candidates);
+  }
+  if (tool.outputSchema !== undefined && tool.outputSchema !== null) {
+    collectStringValues(tool.outputSchema, candidates);
+  }
+
+  for (const candidate of candidates) {
+    if (TOOL_POISONING_PATTERN.test(candidate)) {
+      evidence.push(candidate.slice(0, 240));
+    }
+  }
+
+  return [...new Set(evidence)].slice(0, 5);
+}
+
+function collectStringValues(value: JsonValue, values: string[]): void {
+  if (typeof value === "string") {
+    values.push(value);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((child) => collectStringValues(child, values));
+    return;
+  }
+
+  if (value !== null && typeof value === "object") {
+    Object.values(value).forEach((child) => collectStringValues(child, values));
   }
 }

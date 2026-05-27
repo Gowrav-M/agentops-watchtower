@@ -11,6 +11,7 @@ export interface WatchtowerPaths {
   reportMarkdown: string;
   reportHtml: string;
   reportJson: string;
+  otelSpansJson: string;
 }
 
 export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
@@ -25,7 +26,8 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     reportsDir,
     reportMarkdown: join(reportsDir, "watchtower-report.md"),
     reportHtml: join(reportsDir, "watchtower-report.html"),
-    reportJson: join(reportsDir, "watchtower-report.json")
+    reportJson: join(reportsDir, "watchtower-report.json"),
+    otelSpansJson: join(reportsDir, "otel-spans.json")
   };
 }
 

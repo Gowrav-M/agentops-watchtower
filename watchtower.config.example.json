@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "storage": "local-jsonl",
+  "runsFile": ".watchtower/runs/runs.jsonl",
+  "reportsDir": ".watchtower/reports",
+  "redaction": "enabled",
+  "policy": {
+    "failOn": "high",
+    "requireOutputSchema": true,
+    "allowDestructiveTools": false,
+    "allowOpenWorldTools": true,
+    "detectToolPoisoning": true
+  }
+}
