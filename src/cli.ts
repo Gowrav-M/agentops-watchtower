@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { createAdmissionReport, type AdmissionCheck } from "./core/admission.js";
 import { evaluateRuns } from "./core/evaluator.js";
+import { createEvidenceBundle, readAdmissionDecision, verifyEvidenceBundle, type EvidenceArtifactInput } from "./core/evidence.js";
 import {
   appendRunJsonl,
   ensureWatchtowerDirs,
@@ -45,7 +46,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.5.0");
+    .version("0.6.0");
 
   program
     .command("init")
@@ -278,6 +279,43 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     });
 
   program
+    .command("attest-mcp")
+    .option("--subject <subject>", "Human-readable subject for the evidence bundle.")
+    .description("Create a tamper-evident evidence bundle from Watchtower MCP reports.")
+    .action(async (options: { subject?: string }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const artifacts = await existingEvidenceArtifacts(paths);
+      if (artifacts.length === 0) {
+        throw new Error("No Watchtower MCP report artifacts found. Run admit-mcp, scan-mcp, inventory-mcp, or diff-mcp first.");
+      }
+      const admissionDecision = await readAdmissionDecision(paths.mcpAdmissionJson);
+      const bundle = await createEvidenceBundle({
+        cwd: ctx.cwd,
+        ...(options.subject === undefined ? {} : { subject: options.subject }),
+        ...(admissionDecision === undefined ? {} : { admissionDecision }),
+        artifacts
+      });
+      await writeJsonFile(paths.evidenceBundleJson, bundle);
+      ctx.stdout(`Wrote evidence bundle to ${paths.evidenceBundleJson}`);
+      ctx.stdout(`Integrity hash: ${bundle.integrityHash}`);
+    });
+
+  program
+    .command("verify-attestation")
+    .argument("[bundle]", "Evidence bundle path. Defaults to .watchtower/reports/evidence-bundle.json.")
+    .description("Verify a Watchtower evidence bundle against current local artifacts.")
+    .action(async (bundle: string | undefined) => {
+      const paths = getWatchtowerPaths(ctx.cwd);
+      const bundlePath = bundle === undefined ? paths.evidenceBundleJson : resolve(ctx.cwd, bundle);
+      const evidence = JSON.parse(await readFile(bundlePath, "utf8")) as Awaited<ReturnType<typeof createEvidenceBundle>>;
+      const verification = await verifyEvidenceBundle(evidence, ctx.cwd);
+      if (!verification.ok) {
+        throw new Error(`Evidence bundle verification failed: ${verification.failures.join("; ")}`);
+      }
+      ctx.stdout("Evidence bundle verified.");
+    });
+
+  program
     .command("eval")
     .option("-t, --trace <trace>", "Import and evaluate a trace file instead of stored runs.")
     .description("Run deterministic eval checks against imported agent runs.")
@@ -448,6 +486,24 @@ function bundledPath(...segments: string[]): string {
 function sourceUri(cwd: string, path: string): string {
   const relativePath = relative(cwd, path);
   return (relativePath.startsWith("..") ? path : relativePath).replaceAll("\\", "/");
+}
+
+async function existingEvidenceArtifacts(paths: ReturnType<typeof getWatchtowerPaths>): Promise<EvidenceArtifactInput[]> {
+  const candidates: EvidenceArtifactInput[] = [
+    { name: "mcp-admission", path: paths.mcpAdmissionJson },
+    { name: "mcp-inventory", path: paths.mcpInventoryJson },
+    { name: "mcp-scan", path: join(paths.reportsDir, "mcp-scan.json") },
+    { name: "mcp-baseline-diff", path: paths.mcpBaselineDiffJson },
+    { name: "watchtower-sarif", path: paths.sarifJson },
+    { name: "watchtower-report", path: paths.reportJson }
+  ];
+  const existing: EvidenceArtifactInput[] = [];
+  for (const candidate of candidates) {
+    if (await fileExists(candidate.path)) {
+      existing.push(candidate);
+    }
+  }
+  return existing;
 }
 
 function isConfigRecord(value: unknown): boolean {

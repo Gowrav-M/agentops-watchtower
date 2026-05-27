@@ -21,6 +21,8 @@ npm run dev -- baseline-mcp examples/mcp/safe-tools.json
 npm run dev -- diff-mcp examples/mcp/safe-tools.json
 npm run dev -- inventory-mcp examples/mcp/sample-client-config.json --sarif
 npm run dev -- admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --sarif
+npm run dev -- attest-mcp --subject safe-docs
+npm run dev -- verify-attestation
 npm run dev -- import examples/traces/codex-session.jsonl
 npm run dev -- report --mcp examples/mcp/risky-tools.json
 npm run dev -- export-otel

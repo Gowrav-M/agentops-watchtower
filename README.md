@@ -34,6 +34,7 @@ The demo writes local files under `.watchtower/`:
 - `.watchtower/reports/mcp-admission.json`
 - `.watchtower/reports/otel-spans.json`
 - `.watchtower/reports/watchtower.sarif`
+- `.watchtower/reports/evidence-bundle.json`
 
 No paid API is required. No trace data leaves your machine.
 
@@ -48,6 +49,8 @@ agentops-watchtower baseline-mcp examples/mcp/safe-tools.json
 agentops-watchtower diff-mcp examples/mcp/safe-tools.json
 agentops-watchtower inventory-mcp
 agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
+agentops-watchtower attest-mcp --subject safe-docs
+agentops-watchtower verify-attestation
 agentops-watchtower eval
 agentops-watchtower report --mcp examples/mcp/risky-tools.json
 agentops-watchtower export-otel
@@ -66,6 +69,8 @@ agentops-watchtower doctor
 | `diff-mcp <descriptor>` | Compares current MCP descriptors against the approved baseline to detect tool drift. |
 | `inventory-mcp [configs...]` | Inventories local MCP client configs and flags risky launch settings. |
 | `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
+| `attest-mcp` | Creates a tamper-evident local evidence bundle from Watchtower reports. |
+| `verify-attestation` | Verifies evidence bundle integrity and artifact hashes. |
 | `eval` | Runs deterministic checks against imported agent runs. |
 | `report` | Generates Markdown, HTML, and JSON reports from local runs plus optional MCP findings. |
 | `export-otel` | Exports local runs as OpenTelemetry-style GenAI/MCP span JSON. |
@@ -166,6 +171,20 @@ Decision values:
 
 See [docs/mcp-admission.md](docs/mcp-admission.md).
 
+## Evidence Bundles
+
+Create audit-ready evidence after admission:
+
+```bash
+npx agentops-watchtower admit-mcp --descriptor mcp-tools.json --config .mcp.json --sarif
+npx agentops-watchtower attest-mcp --subject production-github-mcp
+npx agentops-watchtower verify-attestation
+```
+
+The evidence bundle records artifact paths, byte sizes, SHA-256 hashes, admission decision, and a bundle-level integrity hash. If a report is modified after review, verification fails.
+
+See [docs/evidence-bundles.md](docs/evidence-bundles.md).
+
 ## GitHub Code Scanning
 
 Generate SARIF for GitHub Code Scanning:
@@ -228,13 +247,13 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v0.5: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, MCP admission decisions, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v0.6: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, MCP admission decisions, tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.
 - MCP server wrapper mode.
 - GitHub Action summary comments and packaged action.
-- Signed/attested MCP baseline bundles.
+- Optional key-backed signatures for evidence bundles.
 - Browser-based local report viewer.
 
 ## License

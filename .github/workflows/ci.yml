@@ -52,5 +52,8 @@ jobs:
       - name: MCP admission
         run: node dist/cli.js admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --fail-on high --sarif
 
+      - name: Evidence bundle
+        run: node dist/cli.js attest-mcp --subject safe-docs && node dist/cli.js verify-attestation
+
       - name: OTel export
         run: node dist/cli.js export-otel

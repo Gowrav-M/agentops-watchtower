@@ -185,4 +185,30 @@ describe("cli", () => {
     const admission = await readFile(join(cwd, ".watchtower", "reports", "mcp-admission.json"), "utf8");
     expect(admission).toContain("\"decision\": \"deny\"");
   });
+
+  it("attest-mcp creates and verifies a tamper-evident evidence bundle", async () => {
+    const cwd = await makeTempDir();
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(
+      [
+        "node",
+        "watchtower",
+        "admit-mcp",
+        "--descriptor",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-tools.json"),
+        "--config",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-client-config.json")
+      ],
+      { from: "node" }
+    );
+    await cli.parseAsync(["node", "watchtower", "attest-mcp", "--subject", "safe-docs"], { from: "node" });
+    await cli.parseAsync(["node", "watchtower", "verify-attestation"], { from: "node" });
+
+    const bundle = await readFile(join(cwd, ".watchtower", "reports", "evidence-bundle.json"), "utf8");
+    expect(bundle).toContain("\"subject\": \"safe-docs\"");
+    expect(bundle).toContain("\"integrityHash\"");
+    expect(output.join("\n")).toContain("Evidence bundle verified.");
+  });
 });
