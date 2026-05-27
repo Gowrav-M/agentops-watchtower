@@ -30,11 +30,12 @@ Enterprise agent work is blocked less by model access and more by control gaps:
 
 - Agents use tools with real permissions, but teams often lack a local record of what happened.
 - MCP descriptors are prompt surfaces, not just API metadata.
+- MCP client configs are launch surfaces: they can run shells, package managers, local scripts, or remote URLs before any tool call happens.
 - Tool metadata can drift after review.
 - Security teams already consume SARIF, but agent-specific risks rarely appear in that workflow.
 - Observability teams need machine-readable spans, not only human dashboard screenshots.
 
-Existing MCP scanners validate important pieces of this problem. Watchtower's differentiated lane is to combine the black box recorder, scanner, baseline drift detection, CI policy gate, SARIF, and OTel-style export in one local-first developer workflow.
+Existing MCP scanners validate important pieces of this problem. Watchtower's differentiated lane is to combine the black box recorder, config inventory, scanner, baseline drift detection, CI policy gate, SARIF, and OTel-style export in one local-first developer workflow.
 
 ## Gap Chosen For v0.3
 
@@ -45,7 +46,9 @@ The practical missing layer is not another dashboard or another agent runtime. I
 - Can CI fail on the change?
 - Can GitHub security views ingest the result?
 
-v0.3 therefore adds MCP baselines, drift findings, and SARIF export.
+v0.3 added MCP baselines, drift findings, and SARIF export.
+
+v0.4 extends the same evidence model to installed MCP client configuration. It inventories Codex, Claude Code, Claude Desktop, Cursor, VS Code, and Gemini CLI config locations and flags dangerous launch paths before the server starts.
 
 ## Source References
 

@@ -46,5 +46,8 @@ jobs:
       - name: MCP baseline diff
         run: node dist/cli.js diff-mcp examples/mcp/safe-tools.json --fail-on high
 
+      - name: MCP inventory
+        run: node dist/cli.js inventory-mcp examples/mcp/safe-client-config.json --fail-on high --sarif
+
       - name: OTel export
         run: node dist/cli.js export-otel

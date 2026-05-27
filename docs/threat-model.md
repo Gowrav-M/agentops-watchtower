@@ -7,6 +7,7 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 - Local agent transcripts.
 - Tool call arguments.
 - MCP server descriptors.
+- MCP client configuration files.
 - Generated reports.
 - Developer workstation files under `.watchtower/`.
 
@@ -18,6 +19,7 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 - Tools that can affect external systems.
 - Tool-poisoning instructions hidden in descriptions and schemas.
 - MCP tool drift after approval: added tools, removed tools, or changed descriptors.
+- Risky MCP launch configuration: shell wrappers, unpinned package runners, hardcoded credentials, pre-trusted servers, plain remote HTTP.
 - Missing output schemas that make tool results harder to use safely.
 - Weak tool descriptions that hide side effects.
 - Failed agent steps and risky tool-call names in imported traces.
@@ -25,6 +27,7 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 ## Deliberate Limits
 
 - The scanner does not execute MCP servers.
+- The inventory scanner reads config files but does not start configured commands.
 - The scanner does not prove actual runtime side effects.
 - Reports are local static files and should still be reviewed before sharing.
 - v0.3 exports OpenTelemetry-style JSON locally but does not send telemetry to a collector.

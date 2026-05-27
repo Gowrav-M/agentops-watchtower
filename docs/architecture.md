@@ -6,9 +6,11 @@ AgentOps Watchtower is a local-first CLI. The core design keeps parsing, scannin
 flowchart LR
   CLI["CLI commands"] --> Importer["Trace importer"]
   CLI --> Scanner["MCP scanner"]
+  CLI --> Inventory["MCP config inventory"]
   CLI --> Baseline["MCP baseline diff"]
   Importer --> Runs["Local JSONL runs"]
   Scanner --> Findings["Risk findings"]
+  Inventory --> Findings
   Baseline --> Findings
   Runs --> Evals["Deterministic evals"]
   Findings --> Report["Report builder"]
@@ -42,6 +44,7 @@ Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. 
 - `src/core/schemas.ts`: Zod contracts for runs, steps, tool calls, MCP descriptors, findings, eval results, and reports.
 - `src/core/importer.ts`: JSONL and Markdown transcript ingestion.
 - `src/core/mcpScanner.ts`: MCP descriptor risk checks and tool-poisoning metadata scan.
+- `src/core/mcpInventory.ts`: local MCP client config discovery and launch-risk analysis.
 - `src/core/mcpBaseline.ts`: deterministic MCP tool fingerprint baselines and drift findings.
 - `src/core/evaluator.ts`: deterministic trace evals.
 - `src/core/policy.ts`: config loading and fail-on severity gates.

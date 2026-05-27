@@ -15,6 +15,7 @@ import {
 } from "./core/files.js";
 import { importTraceFile } from "./core/importer.js";
 import { compareMcpBaseline, createMcpBaseline, readMcpBaselineFile } from "./core/mcpBaseline.js";
+import { discoverMcpConfigCandidates, explicitMcpConfigCandidates, inventoryMcpConfigFiles } from "./core/mcpInventory.js";
 import { scanMcpDescriptorFile, type McpScanOptions } from "./core/mcpScanner.js";
 import { exportOtelSpans } from "./core/otelExporter.js";
 import { loadWatchtowerConfig, shouldFailForFindings, summarizePolicyFailure } from "./core/policy.js";
@@ -43,7 +44,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("0.3.0");
+    .version("0.4.0");
 
   program
     .command("init")
@@ -158,6 +159,45 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
       const failOn = parseSeverityOption(options.failOn) ?? "critical";
       if (shouldFailForFindings(diff.findings, failOn)) {
         throw new Error(summarizePolicyFailure(diff.findings, failOn));
+      }
+    });
+
+  program
+    .command("inventory-mcp")
+    .argument("[configs...]", "Optional MCP config files. If omitted, Watchtower scans common local client config paths.")
+    .option("--fail-on <severity>", "Exit non-zero when inventory findings meet this severity.")
+    .option("--sarif", "Also write GitHub code scanning SARIF output.")
+    .description("Inventory local MCP client configuration and flag risky server launch settings.")
+    .action(async (configs: string[], options: { failOn?: string; sarif?: boolean }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const config = await loadWatchtowerConfig(ctx.cwd);
+      const home = process.env["USERPROFILE"] ?? process.env["HOME"];
+      const appData = process.env["APPDATA"];
+      const candidates =
+        configs.length > 0
+          ? explicitMcpConfigCandidates(configs.map((configPath) => resolve(ctx.cwd, configPath)))
+          : discoverMcpConfigCandidates({
+              cwd: ctx.cwd,
+              ...(home === undefined ? {} : { home }),
+              ...(appData === undefined ? {} : { appData })
+            });
+      const inventory = await inventoryMcpConfigFiles(candidates);
+      await writeJsonFile(paths.mcpInventoryJson, inventory);
+      if (options.sarif === true) {
+        await writeJsonFile(
+          paths.sarifJson,
+          exportSarif(inventory.findings, {
+            ...(configs.length === 1 ? { sourceUri: sourceUri(ctx.cwd, resolve(ctx.cwd, configs[0] ?? "")) } : {}),
+            invocationCommandLine: `agentops-watchtower inventory-mcp${configs.length === 0 ? "" : ` ${configs.join(" ")}`} --sarif`
+          })
+        );
+        ctx.stdout(`Wrote ${paths.sarifJson}`);
+      }
+      ctx.stdout(`Inventoried ${inventory.servers.length} MCP servers from ${inventory.sources.length} candidate config files.`);
+      ctx.stdout(`Findings: ${inventory.findings.length}.`);
+      const failOn = parseSeverityOption(options.failOn) ?? config.policy.failOn;
+      if (shouldFailForFindings(inventory.findings, failOn)) {
+        throw new Error(summarizePolicyFailure(inventory.findings, failOn));
       }
     });
 

@@ -17,6 +17,7 @@ agentops-watchtower import trace.jsonl
 agentops-watchtower scan-mcp tools.json --sarif
 agentops-watchtower baseline-mcp tools.json
 agentops-watchtower diff-mcp tools.json
+agentops-watchtower inventory-mcp
 agentops-watchtower report --mcp tools.json
 agentops-watchtower export-otel
 ```
