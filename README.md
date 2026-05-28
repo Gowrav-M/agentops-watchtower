@@ -18,6 +18,18 @@ Run one command to see what an agent did, which MCP tools were risky, which runt
   </tr>
 </table>
 
+<p align="center">
+  <a href="docs/assets/agentops-watchtower-repository-pitch.mp4">
+    <img src="docs/assets/agentops-watchtower-pitch-poster.png" alt="AgentOps Watchtower repository pitch demo poster." width="920">
+  </a>
+</p>
+
+<p align="center">
+  <strong><a href="docs/assets/agentops-watchtower-repository-pitch.mp4">Watch the 1:46 proof demo with audio</a></strong>
+  ·
+  <a href="docs/demo.md">Reproduce the demo locally</a>
+</p>
+
 AgentOps Watchtower is for developers using Codex, Claude Code, Cursor, OpenCode, OpenClaw, Hermes Agent, Gemini CLI, and MCP servers who need to answer one operational question:
 
 > What did the agent do, which tools were risky, and what proof can I attach before this workflow is trusted?
