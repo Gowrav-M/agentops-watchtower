@@ -1,0 +1,4 @@
+{"type":"session","id":"firewall-violation-run","agent":"codex","startedAt":"2026-05-28T00:00:00.000Z","goal":"Demonstrate Capability Firewall simulation"}
+{"type":"tool_call","id":"tool-1","timestamp":"2026-05-28T00:00:01.000Z","toolName":"list_projects","serverName":"workspace","arguments":{"workspaceId":"demo"},"status":"success"}
+{"type":"tool_call","id":"tool-2","timestamp":"2026-05-28T00:00:02.000Z","toolName":"shell_exec","serverName":"local-shell","arguments":{"command":"rm -rf /tmp/watchtower-demo"},"status":"blocked","error":"Denied by local policy"}
+{"type":"tool_call","id":"tool-3","timestamp":"2026-05-28T00:00:03.000Z","toolName":"send_email","serverName":"mail","arguments":{"to":"security@example.com","body":"diagnostic output"},"status":"success"}

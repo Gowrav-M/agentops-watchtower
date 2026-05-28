@@ -4,19 +4,19 @@
 [![Node 22+](https://img.shields.io/badge/node-%3E%3D22-339933)](package.json)
 [![License MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Local first](https://img.shields.io/badge/local--first-no%20cloud%20required-111827)](#quick-start)
-[![MCP security](https://img.shields.io/badge/MCP-security%20%2B%20runtime%20policy-orange)](#mcp-runtime-proxy)
+[![MCP security](https://img.shields.io/badge/MCP-security%20%2B%20runtime%20policy-orange)](#capability-firewall)
 
-Local-first black box recorder, MCP safety scanner, runtime policy proxy, and evidence generator for AI agent workflows.
+Local-first black box recorder, MCP safety scanner, runtime Capability Firewall, and evidence generator for AI agent workflows.
 
 <p align="center">
-  <img src="docs/assets/watchtower-pipeline.svg" alt="AgentOps Watchtower pipeline: agent traces and MCP configs flow through local scanners, runtime gates, reports, SARIF, OTel, and signed evidence." width="920">
+  <img src="docs/assets/watchtower-pipeline.svg" alt="AgentOps Watchtower pipeline: agent traces and MCP configs flow through local scanners, capability firewall, reports, SARIF, OTel, and signed evidence." width="920">
 </p>
 
 AgentOps Watchtower is for developers using Codex, Claude Code, Cursor, OpenCode, OpenClaw, Hermes Agent, Gemini CLI, and MCP servers who need to answer one operational question:
 
 > What did the agent do, which tools were risky, and what proof can I attach before this workflow is trusted?
 
-It is not another agent framework. It is the safety and evidence layer around agent runs: import traces, inspect MCP tool surfaces, detect runtime attack paths, protect MCP configs, block unsafe stdio tool calls, and generate reproducible Markdown, HTML, JSON, SARIF, OTel-style, AgentBOM, and signed evidence artifacts.
+It is not another agent framework. It is the safety and evidence layer around agent runs: import traces, inspect MCP tool surfaces, generate least-privilege firewall policies, detect runtime attack paths, protect MCP configs, block unsafe stdio tool calls, and generate reproducible Markdown, HTML, JSON, SARIF, OTel-style, AgentBOM, and signed evidence artifacts.
 
 ## Why Now
 
@@ -30,6 +30,7 @@ Current industry guidance points in the same direction:
 | [Microsoft indirect prompt injection guidance](https://learn.microsoft.com/en-us/security/zero-trust/sfi/defend-indirect-prompt-injection) recommends runtime monitoring, tool-chain analysis, plan drift detection, and least privilege. | Static checks are not enough; risky sequences matter. | `analyze-run`, `gate-mcp`, `proxy-mcp`, `protect-mcp`. |
 | [OpenTelemetry GenAI conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) define agent, model, event, metric, and MCP signals. | Agent observability needs portable machine-readable traces. | `export-otel` emits local GenAI/MCP-style span JSON. |
 | [MCP security guidance](https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices) highlights local server compromise and malicious startup commands. | Workstation config can be the first compromise point. | Config inventory, protected config wrappers, runtime proxy audit logs. |
+| MCP gateway products are converging on isolation, least privilege, deny-by-default, and audit trails. | Developers need a local, repo-friendly version for CI and workstation adoption. | `firewall init`, `firewall simulate`, and `proxy-mcp --firewall`. |
 
 ## Quick Start
 
@@ -49,10 +50,13 @@ Open .watchtower/reports/watchtower-report.md or .watchtower/reports/watchtower-
 Protect one MCP server behind the runtime proxy without hand-editing JSON:
 
 ```bash
+npx agentops-watchtower firewall init --descriptor mcp-tools.json
+npx agentops-watchtower firewall simulate --config .watchtower/firewall.json --trace examples/traces/firewall-violation.jsonl
 npx agentops-watchtower protect-mcp \
   --config .mcp.json \
   --server github \
-  --descriptor mcp-tools.json
+  --descriptor mcp-tools.json \
+  --firewall .watchtower/firewall.json
 ```
 
 Use it in GitHub Actions:
@@ -76,6 +80,7 @@ No paid API is required. No trace data leaves your machine.
 | Config and shadow MCP inventory | `inventory-mcp` | `.watchtower/reports/mcp-inventory.json` |
 | Drift control | `baseline-mcp`, `diff-mcp` | `.watchtower/baselines/mcp-tools.json` |
 | Admission and launch policy | `admit-mcp`, `gate-mcp` | `.watchtower/reports/mcp-admission.json`, `mcp-gate.json` |
+| Capability Firewall | `firewall init`, `firewall simulate` | `.watchtower/firewall.json`, `.watchtower/reports/firewall-report.json` |
 | Runtime prevention | `proxy-mcp`, `protect-mcp` | `.watchtower/reports/mcp-proxy-audit.json` |
 | Runtime forensics | `analyze-run` | `.watchtower/reports/attack-graph.json` |
 | Governance inventory | `agent-bom --cyclonedx` | `.watchtower/reports/agent-bom.json`, `agent-bom.cdx.json` |
@@ -92,11 +97,13 @@ flowchart LR
   M["MCP client configs"] --> W
   W --> S["Static risk scan"]
   W --> G["Admission and gate"]
+  W --> F["Capability Firewall"]
   W --> P["Runtime proxy"]
   W --> R["Attack graph"]
   W --> B["AgentBOM"]
   W --> E["Signed evidence"]
   S --> O["Markdown, HTML, JSON"]
+  F --> O
   R --> O
   B --> O
   O --> CI["SARIF for GitHub Code Scanning"]
@@ -126,8 +133,10 @@ agentops-watchtower diff-mcp examples/mcp/safe-tools.json
 agentops-watchtower inventory-mcp
 agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
 agentops-watchtower gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json
+agentops-watchtower firewall init --descriptor examples/mcp/risky-tools.json
+agentops-watchtower firewall simulate --config examples/firewall/least-privilege.json --trace examples/traces/firewall-violation.jsonl
 agentops-watchtower proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run
-agentops-watchtower protect-mcp --config examples/mcp/stdio-client-config.json --server local-echo
+agentops-watchtower protect-mcp --config examples/mcp/stdio-client-config.json --server local-echo --firewall examples/firewall/least-privilege.json
 agentops-watchtower unprotect-mcp --config .mcp.json
 agentops-watchtower agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --cyclonedx
 agentops-watchtower attest-mcp --subject safe-docs --private-key private.pem --key-id local-reviewer
@@ -152,6 +161,8 @@ agentops-watchtower doctor
 | `inventory-mcp [configs...]` | Inventories local MCP client configs and flags risky launch settings. |
 | `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
 | `gate-mcp` | Preflights one configured MCP server and blocks unsafe launch plans. |
+| `firewall init` | Generates a default-deny, least-privilege MCP tool policy from descriptors. |
+| `firewall simulate` | Replays agent traces through a Capability Firewall policy and writes allow/deny/escalation evidence. |
 | `proxy-mcp` | Runs a local stdio MCP server behind runtime policy enforcement and audit logging. |
 | `protect-mcp` | Generates a protected MCP config that routes one server through `proxy-mcp`. |
 | `unprotect-mcp` | Restores an in-place protected MCP config from its rollback manifest. |
@@ -175,6 +186,7 @@ agentops-watchtower doctor
 - MCP tool drift: added, removed, or changed descriptors after approval.
 - Risky local MCP config: dangerous shell launchers, hardcoded secrets, unpinned package runners, SSE, and plain remote HTTP.
 - Runtime attack paths: secret-like sources flowing to external sinks, untrusted content flowing to shell/destructive/external tools, repository context leaving the workspace, and blocked actions followed by alternate sinks.
+- Capability Firewall denials, approval-required calls, default-deny misses, and rule-based argument conditions.
 - Unsafe MCP calls before execution through the stdio runtime proxy.
 - Prompt-injection-like instructions in tool result summaries, `resultText`, or structured `result` values.
 - Failed agent steps and risky tool calls in imported traces.
@@ -191,8 +203,9 @@ npx agentops-watchtower diff-mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower inventory-mcp --fail-on high
 npx agentops-watchtower admit-mcp --descriptor examples/mcp/risky-tools.json --config examples/mcp/sample-client-config.json --fail-on high
 npx agentops-watchtower gate-mcp --config examples/mcp/sample-client-config.json --server review-this-installer --fail-on high
+npx agentops-watchtower firewall simulate --config examples/firewall/least-privilege.json --trace examples/traces/firewall-violation.jsonl --fail-on high
 npx agentops-watchtower proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run --fail-on high
-npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json
+npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json --firewall .watchtower/firewall.json
 npx agentops-watchtower agent-bom --config examples/mcp/sample-client-config.json --descriptor examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --fail-on high
 ```
@@ -295,6 +308,41 @@ The gate filters config findings to the selected server, adds descriptor and bas
 
 See [docs/mcp-gate.md](docs/mcp-gate.md).
 
+## Capability Firewall
+
+Generate a local policy-as-code file from MCP tool descriptors:
+
+```bash
+npx agentops-watchtower firewall init --descriptor mcp-tools.json
+```
+
+Watchtower writes:
+
+```text
+.watchtower/firewall.json
+```
+
+The generated policy starts default-deny, allows read-only local tools, denies destructive or command-like tools, and escalates open-world tools for review. You can replay an agent trace through that policy before installing it:
+
+```bash
+npx agentops-watchtower firewall simulate \
+  --config .watchtower/firewall.json \
+  --trace examples/traces/firewall-violation.jsonl \
+  --fail-on high
+```
+
+Use the same policy during live stdio proxying:
+
+```bash
+npx agentops-watchtower proxy-mcp \
+  --config .mcp.json \
+  --server github \
+  --descriptor mcp-tools.json \
+  --firewall .watchtower/firewall.json
+```
+
+See [docs/firewall.md](docs/firewall.md).
+
 ## MCP Runtime Proxy
 
 Block unsafe stdio MCP tool calls before the server executes them:
@@ -303,7 +351,8 @@ Block unsafe stdio MCP tool calls before the server executes them:
 npx agentops-watchtower proxy-mcp \
   --config .mcp.json \
   --server github \
-  --descriptor mcp-tools.json
+  --descriptor mcp-tools.json \
+  --firewall .watchtower/firewall.json
 ```
 
 Use dry-run mode for CI preflight without launching the server:
@@ -323,6 +372,7 @@ Watchtower writes:
 ```
 
 The proxy intercepts MCP JSON-RPC `tools/call` messages, blocks direct destructive or command-execution tools under the default policy, and uses the runtime attack graph to stop chains such as `read_secret -> send_email` or prompt-injected web content followed by shell execution.
+When `--firewall` is provided, explicit Capability Firewall policy rules run first and can allow, deny, or require approval per tool call.
 
 See [docs/mcp-proxy.md](docs/mcp-proxy.md).
 
@@ -334,7 +384,8 @@ Wrap an existing MCP client config without hand-editing JSON:
 npx agentops-watchtower protect-mcp \
   --config .mcp.json \
   --server github \
-  --descriptor mcp-tools.json
+  --descriptor mcp-tools.json \
+  --firewall .watchtower/firewall.json
 ```
 
 By default this is non-destructive. Watchtower writes:
@@ -498,7 +549,7 @@ See [docs/research.md](docs/research.md) and [docs/industry-positioning.md](docs
 
 ## Project Status
 
-This is v1.3: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, stdio MCP runtime proxy enforcement, MCP protect/unprotect config wrapping, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, GitHub Action support, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v1.4: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, Capability Firewall policy-as-code, firewall simulation reports, stdio MCP runtime proxy enforcement, MCP protect/unprotect config wrapping, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, GitHub Action support, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.

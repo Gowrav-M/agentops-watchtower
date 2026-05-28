@@ -9,6 +9,7 @@ export interface WatchtowerPaths {
   runsJsonl: string;
   baselinesDir: string;
   protectedDir: string;
+  firewallConfigJson: string;
   mcpBaselineJson: string;
   reportsDir: string;
   reportMarkdown: string;
@@ -24,6 +25,7 @@ export interface WatchtowerPaths {
   mcpAdmissionJson: string;
   mcpGateJson: string;
   mcpProxyAuditJson: string;
+  firewallReportJson: string;
   attackGraphJson: string;
   evidenceBundleJson: string;
 }
@@ -41,6 +43,7 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     runsJsonl: join(runsDir, "runs.jsonl"),
     baselinesDir,
     protectedDir,
+    firewallConfigJson: join(root, "firewall.json"),
     mcpBaselineJson: join(baselinesDir, "mcp-tools.json"),
     reportsDir,
     reportMarkdown: join(reportsDir, "watchtower-report.md"),
@@ -56,6 +59,7 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     mcpAdmissionJson: join(reportsDir, "mcp-admission.json"),
     mcpGateJson: join(reportsDir, "mcp-gate.json"),
     mcpProxyAuditJson: join(reportsDir, "mcp-proxy-audit.json"),
+    firewallReportJson: join(reportsDir, "firewall-report.json"),
     attackGraphJson: join(reportsDir, "attack-graph.json"),
     evidenceBundleJson: join(reportsDir, "evidence-bundle.json")
   };

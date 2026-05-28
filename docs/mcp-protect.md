@@ -3,7 +3,7 @@
 `protect-mcp` is the adoption layer for the runtime proxy. It rewrites one selected MCP server entry so the client launches:
 
 ```text
-npx -y agentops-watchtower@<version> proxy-mcp --config <upstream-config> --server <server>
+npx -y agentops-watchtower@<version> proxy-mcp --config <upstream-config> --server <server> [--firewall <policy>]
 ```
 
 This solves the practical problem after a scanner or proxy exists: developers still need a safe way to insert it into real MCP client configs and undo the change.
@@ -14,7 +14,8 @@ This solves the practical problem after a scanner or proxy exists: developers st
 npx agentops-watchtower protect-mcp \
   --config .mcp.json \
   --server github \
-  --descriptor mcp-tools.json
+  --descriptor mcp-tools.json \
+  --firewall .watchtower/firewall.json
 ```
 
 Copy mode does not edit the original config. It writes:
@@ -49,7 +50,7 @@ npx agentops-watchtower unprotect-mcp --config .mcp.json
 
 ## Supported Config Shape
 
-v1.3 supports JSON client configs with `mcpServers` or `servers` maps. Unrelated config fields are preserved.
+v1.4 supports JSON client configs with `mcpServers` or `servers` maps. Unrelated config fields are preserved.
 
 Example input:
 
@@ -73,12 +74,14 @@ Protected output:
       "command": "npx",
       "args": [
         "-y",
-        "agentops-watchtower@1.3.0",
+        "agentops-watchtower@1.4.0",
         "proxy-mcp",
         "--config",
         "D:\\repo\\.mcp.json",
         "--server",
-        "github"
+        "github",
+        "--firewall",
+        "D:\\repo\\.watchtower\\firewall.json"
       ]
     }
   }
@@ -91,8 +94,9 @@ Protected output:
 - Requires an explicit server name.
 - Preserves unrelated config entries.
 - Validates rollback manifests before restore.
+- Passes descriptor, baseline, firewall, and fail-on settings through to `proxy-mcp`.
 - Keeps local files local; no cloud service or paid API is required.
 
 ## Boundaries
 
-v1.3 protects JSON configs. TOML/YAML client configs, multi-server bulk wrapping, interactive approval prompts, and Streamable HTTP proxying remain later layers.
+v1.4 protects JSON configs. TOML/YAML client configs, multi-server bulk wrapping, interactive approval prompts, and Streamable HTTP proxying remain later layers.

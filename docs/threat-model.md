@@ -21,6 +21,8 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 - MCP tool drift after approval: added tools, removed tools, or changed descriptors.
 - Risky MCP launch configuration: shell wrappers, unpinned package runners, hardcoded credentials, pre-trusted servers, plain remote HTTP.
 - Admission decision control before enabling a server for agent use.
+- Least-privilege runtime policy for individual MCP tool calls.
+- Offline simulation of allow, deny, and approval-required firewall decisions from existing traces.
 - Runtime blocking for local stdio MCP `tools/call` requests.
 - Safe insertion and rollback of the runtime proxy in MCP client configs.
 - Tamper-evident evidence bundle for reviewed artifacts and decisions.
@@ -32,8 +34,10 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 
 - Scanners and inventory commands do not execute MCP servers.
 - The inventory scanner reads config files but does not start configured commands.
-- `proxy-mcp` only supports local stdio servers in v1.3; Streamable HTTP/SSE proxying is not implemented yet.
-- `protect-mcp` supports JSON MCP configs in v1.3; TOML/YAML config rewriting is not implemented yet.
+- `proxy-mcp` only supports local stdio servers in v1.4; Streamable HTTP/SSE proxying is not implemented yet.
+- `protect-mcp` supports JSON MCP configs in v1.4; TOML/YAML config rewriting is not implemented yet.
+- Firewall policies are JSON rule sets in v1.4; OPA/Rego-style policy packs are not implemented yet.
+- `escalate` blocks and records approval-required calls, but interactive approval prompts and signed approval receipts are not implemented yet.
 - The scanner does not prove actual runtime side effects unless the run is observed through traces or the stdio proxy.
 - Reports are local static files and should still be reviewed before sharing.
 - OpenTelemetry-style export writes JSON locally but does not send telemetry to a collector.
@@ -49,6 +53,7 @@ AgentOps Watchtower treats agent traces and MCP descriptors as untrusted local i
 - Policy gates can fail CI for high or critical findings.
 - MCP baselines make descriptor changes explicit before agents trust updated tools.
 - Admission reports collapse multiple checks into one allow/review/deny decision.
+- Capability Firewall policies start default-deny and can be simulated before live use.
 - The stdio proxy blocks destructive, command, and risky source-to-sink chains before forwarding `tools/call`.
 - `protect-mcp` writes protected config copies by default and writes backups before in-place changes.
 - Evidence bundles hash every included artifact and can be verified before audit or release.

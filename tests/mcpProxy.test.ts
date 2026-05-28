@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach } from "vitest";
 import { describe, expect, it } from "vitest";
+import type { FirewallConfig } from "../src/core/firewall.js";
 import {
   createBlockedJsonRpcResponse,
   createMcpProxyAuditReport,
@@ -113,6 +114,50 @@ describe("MCP runtime proxy policy", () => {
     });
     expect(audit.summary).toMatchObject({ allowed: 0, blocked: 1 });
     expect(audit.events[0]).toMatchObject({ action: "block", status: "blocked", toolName: "delete_repository" });
+  });
+
+  it("applies Capability Firewall decisions before default proxy policy", () => {
+    const firewall: FirewallConfig = {
+      schemaVersion: 1,
+      generatedAt: "2026-05-28T00:00:00.000Z",
+      defaultDecision: "allow",
+      rules: [
+        {
+          id: "deny-send-email",
+          decision: "deny",
+          severity: "high",
+          reason: "Outbound email requires a reviewed approval path.",
+          match: { toolName: "send_email" }
+        }
+      ]
+    };
+    const state = createMcpProxyState({
+      generatedAt: "2026-05-28T00:00:00.000Z",
+      serverName: "mail",
+      firewall,
+      policy: { allowOpenWorldTools: true }
+    });
+
+    const decision = evaluateMcpProxyRequest(
+      state,
+      {
+        jsonrpc: "2.0",
+        id: "mail-1",
+        method: "tools/call",
+        params: { name: "send_email", arguments: { to: "external@example.com", body: "debug output" } }
+      },
+      "2026-05-28T00:00:01.000Z"
+    );
+
+    expect(decision).toMatchObject({
+      action: "block",
+      finding: {
+        severity: "high",
+        category: "firewall.tool_call_denied",
+        target: "send_email"
+      }
+    });
+    expect(createMcpProxyAuditReport(state).summary).toMatchObject({ allowed: 0, blocked: 1 });
   });
 
   it("blocks secret-source to external-sink chains at runtime", () => {

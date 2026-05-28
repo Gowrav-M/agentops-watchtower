@@ -9,6 +9,7 @@ export interface McpProtectionManifest {
   packageSpec: string;
   descriptorPath?: string;
   baselinePath?: string;
+  firewallPath?: string;
   failOn?: string;
   originalServer: Record<string, unknown>;
   protectedServer: Record<string, unknown>;
@@ -23,6 +24,7 @@ export interface CreateMcpProtectionOptions {
   packageSpec: string;
   descriptorPath?: string;
   baselinePath?: string;
+  firewallPath?: string;
   failOn?: string;
 }
 
@@ -80,6 +82,7 @@ export function createMcpProtection(config: unknown, options: CreateMcpProtectio
       packageSpec: options.packageSpec,
       ...(options.descriptorPath === undefined ? {} : { descriptorPath: options.descriptorPath }),
       ...(options.baselinePath === undefined ? {} : { baselinePath: options.baselinePath }),
+      ...(options.firewallPath === undefined ? {} : { firewallPath: options.firewallPath }),
       ...(options.failOn === undefined ? {} : { failOn: options.failOn }),
       originalServer: cloneRecord(originalServer),
       protectedServer
@@ -127,6 +130,9 @@ function createProtectedServer(options: CreateMcpProtectionOptions, upstreamConf
   }
   if (options.baselinePath !== undefined) {
     args.push("--baseline", options.baselinePath);
+  }
+  if (options.firewallPath !== undefined) {
+    args.push("--firewall", options.firewallPath);
   }
   if (options.failOn !== undefined) {
     args.push("--fail-on", options.failOn);

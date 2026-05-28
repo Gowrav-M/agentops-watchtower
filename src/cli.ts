@@ -9,6 +9,7 @@ import { createAgentBom, exportCycloneDxAgentBom, renderAgentBomMarkdown } from 
 import { analyzeRuns, type AttackGraphContext } from "./core/attackGraph.js";
 import { evaluateRuns } from "./core/evaluator.js";
 import { createEvidenceBundle, readAdmissionDecision, signEvidenceBundle, verifyEvidenceBundle, type EvidenceArtifactInput } from "./core/evidence.js";
+import { createFirewallConfigFromTools, readFirewallConfigFile, simulateFirewall } from "./core/firewall.js";
 import {
   appendRunJsonl,
   ensureWatchtowerDirs,
@@ -59,7 +60,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   const program = new Command();
   program
     .name("agentops-watchtower")
-    .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
+    .description("Local-first black box recorder, MCP safety scanner, runtime Capability Firewall, and evidence generator.")
     .version(readPackageVersion());
 
   program
@@ -378,6 +379,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     .option("-s, --server <server>", "MCP server name or full inventory id to proxy. Required when the config has multiple servers.")
     .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to use for gate checks and runtime policy context.")
     .option("-b, --baseline <baseline>", "Optional Watchtower MCP baseline file for drift checks.")
+    .option("--firewall <firewall>", "Capability Firewall policy config to enforce on MCP tool calls.")
     .option("--allow-review", "Allow a review gate decision after human approval.")
     .option("--fail-on <severity>", "Exit non-zero when proxy preflight findings meet this severity.")
     .option("--dry-run", "Run the preflight gate and write an empty proxy audit without launching the server.")
@@ -388,6 +390,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         server?: string;
         descriptor?: string;
         baseline?: string;
+        firewall?: string;
         allowReview?: boolean;
         failOn?: string;
         dryRun?: boolean;
@@ -402,6 +405,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         let descriptorFindings: RiskFinding[] | undefined;
         let baselineFindings: RiskFinding[] | undefined;
         let descriptorTools: Awaited<ReturnType<typeof scanMcpDescriptorFile>>["tools"] | undefined;
+        const firewall = options.firewall === undefined ? undefined : await readFirewallConfigFile(resolve(ctx.cwd, options.firewall));
         if (options.descriptor !== undefined) {
           const descriptorPath = resolve(ctx.cwd, options.descriptor);
           const descriptorScan = await scanMcpDescriptorFile(descriptorPath, watchtowerConfig.policy);
@@ -444,6 +448,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
           const state = createMcpProxyState({
             serverName: gate.server.name,
             ...(descriptorTools === undefined ? {} : { tools: descriptorTools }),
+            ...(firewall === undefined ? {} : { firewall }),
             policy: watchtowerConfig.policy
           });
           await writeJsonFile(paths.mcpProxyAuditJson, createMcpProxyAuditReport(state));
@@ -458,10 +463,54 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
           server: gate.server,
           ...(descriptorTools === undefined ? {} : { tools: descriptorTools }),
           policy: watchtowerConfig.policy,
+          ...(firewall === undefined ? {} : { firewall }),
           auditPath: paths.mcpProxyAuditJson
         });
       }
     );
+
+  const firewall = program
+    .command("firewall")
+    .description("Generate and simulate local MCP Capability Firewall policy-as-code.");
+
+  firewall
+    .command("init")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to use when generating least-privilege rules.")
+    .option("-o, --out <out>", "Firewall config output path. Defaults to .watchtower/firewall.json.")
+    .description("Generate a starter Capability Firewall policy config.")
+    .action(async (options: { descriptor?: string; out?: string }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const descriptorPath = options.descriptor === undefined ? bundledPath("examples", "mcp", "risky-tools.json") : resolve(ctx.cwd, options.descriptor);
+      const descriptorScan = await scanMcpDescriptorFile(descriptorPath);
+      const firewallConfig = createFirewallConfigFromTools(descriptorScan.tools, {
+        description: `Least-privilege firewall policy generated from ${sourceUri(ctx.cwd, descriptorPath)}.`
+      });
+      const outPath = options.out === undefined ? paths.firewallConfigJson : resolve(ctx.cwd, options.out);
+      await writeJsonFile(outPath, firewallConfig);
+      ctx.stdout(`Firewall config written to ${outPath}`);
+      ctx.stdout(`Rules: ${firewallConfig.rules.length}. Default: ${firewallConfig.defaultDecision}.`);
+    });
+
+  firewall
+    .command("simulate")
+    .requiredOption("-c, --config <config>", "Firewall policy config JSON.")
+    .option("-t, --trace <trace>", "Trace file to replay through the firewall. Defaults to stored runs.")
+    .option("--fail-on <severity>", "Exit non-zero when firewall findings meet this severity.")
+    .description("Replay agent tool-call traces through a Capability Firewall policy.")
+    .action(async (options: { config: string; trace?: string; failOn?: string }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const config = await loadWatchtowerConfig(ctx.cwd);
+      const firewallConfig = await readFirewallConfigFile(resolve(ctx.cwd, options.config));
+      const runs = await loadRunsForCommand(ctx.cwd, options.trace);
+      const report = simulateFirewall(firewallConfig, runs);
+      await writeJsonFile(paths.firewallReportJson, report);
+      ctx.stdout(`Firewall simulation: ${report.summary.allowed} allowed, ${report.summary.denied} denied, ${report.summary.escalated} need approval.`);
+      ctx.stdout(`Wrote ${paths.firewallReportJson}`);
+      const failOn = parseSeverityOption(options.failOn) ?? config.policy.failOn;
+      if (shouldFailForFindings(report.findings, failOn)) {
+        throw new Error(summarizePolicyFailure(report.findings, failOn));
+      }
+    });
 
   program
     .command("protect-mcp")
@@ -471,6 +520,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     .option("--in-place", "Modify the original config after writing a backup and rollback manifest.")
     .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to pass through to proxy-mcp.")
     .option("-b, --baseline <baseline>", "Watchtower MCP baseline file to pass through to proxy-mcp.")
+    .option("--firewall <firewall>", "Capability Firewall policy config to pass through to proxy-mcp.")
     .option("--fail-on <severity>", "Proxy policy threshold to pass through to proxy-mcp.")
     .option("--package <packageSpec>", "npm package spec used in the protected npx wrapper.")
     .description("Create a protected MCP client config that routes one server through the Watchtower proxy.")
@@ -482,6 +532,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         inPlace?: boolean;
         descriptor?: string;
         baseline?: string;
+        firewall?: string;
         failOn?: string;
         package?: string;
       }) => {
@@ -496,6 +547,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         const failOn = parseSeverityOption(options.failOn);
         const descriptorPath = options.descriptor === undefined ? undefined : resolve(ctx.cwd, options.descriptor);
         const baselinePath = options.baseline === undefined ? undefined : resolve(ctx.cwd, options.baseline);
+        const firewallPath = options.firewall === undefined ? undefined : resolve(ctx.cwd, options.firewall);
         const protection = createMcpProtection(rawConfig, {
           serverName: options.server,
           originalConfigPath: configPath,
@@ -504,6 +556,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
           packageSpec,
           ...(descriptorPath === undefined ? {} : { descriptorPath }),
           ...(baselinePath === undefined ? {} : { baselinePath }),
+          ...(firewallPath === undefined ? {} : { firewallPath }),
           ...(failOn === undefined ? {} : { failOn })
         });
 
@@ -589,7 +642,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
       const paths = await ensureWatchtowerDirs(ctx.cwd);
       const artifacts = await existingEvidenceArtifacts(paths);
       if (artifacts.length === 0) {
-        throw new Error("No Watchtower MCP report artifacts found. Run admit-mcp, scan-mcp, inventory-mcp, or diff-mcp first.");
+        throw new Error("No Watchtower MCP report artifacts found. Run admit-mcp, scan-mcp, inventory-mcp, diff-mcp, or firewall simulate first.");
       }
       const admissionDecision = await readAdmissionDecision(paths.mcpAdmissionJson);
       const bundle = await createEvidenceBundle({
@@ -741,10 +794,19 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
       const safeMcpScan = await scanMcpDescriptorFile(safeMcpPath);
       const attackGraph = analyzeRuns([attackRun]);
       const demoRuns = [run, attackRun];
+      const firewallConfig = createFirewallConfigFromTools(mcpScan.tools, {
+        description: "Demo least-privilege policy generated from examples/mcp/risky-tools.json."
+      });
+      const firewallReport = simulateFirewall(firewallConfig, demoRuns);
       const evalResults = evaluateRuns(demoRuns);
       const report = createWatchtowerReport({
         runs: demoRuns,
-        findings: [...demoRuns.flatMap((demoRun) => demoRun.findings), ...mcpScan.findings, ...attackGraph.findings],
+        findings: [
+          ...demoRuns.flatMap((demoRun) => demoRun.findings),
+          ...mcpScan.findings,
+          ...attackGraph.findings,
+          ...firewallReport.findings
+        ],
         evalResults
       });
 
@@ -754,6 +816,8 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
       await writeJsonFile(join(paths.runsDir, `${attackRun.id}.json`), attackRun);
       await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), mcpScan);
       await writeJsonFile(paths.attackGraphJson, attackGraph);
+      await writeJsonFile(paths.firewallConfigJson, firewallConfig);
+      await writeJsonFile(paths.firewallReportJson, firewallReport);
       await writeJsonFile(paths.mcpBaselineJson, createMcpBaseline(safeMcpScan.tools, { source: "examples/mcp/safe-tools.json" }));
       await writeJsonFile(paths.sarifJson, exportSarif(mcpScan.findings, { sourceUri: "examples/mcp/risky-tools.json" }));
       await writeReportFiles(paths, report, renderMarkdownReport(report), renderHtmlReport(report));
@@ -989,6 +1053,7 @@ async function existingEvidenceArtifacts(paths: ReturnType<typeof getWatchtowerP
     { name: "mcp-baseline-diff", path: paths.mcpBaselineDiffJson },
     { name: "mcp-gate", path: paths.mcpGateJson },
     { name: "mcp-proxy-audit", path: paths.mcpProxyAuditJson },
+    { name: "firewall-report", path: paths.firewallReportJson },
     { name: "agent-bom", path: paths.agentBomJson },
     { name: "agent-bom-markdown", path: paths.agentBomMarkdown },
     { name: "agent-bom-cyclonedx", path: paths.agentBomCycloneDxJson },

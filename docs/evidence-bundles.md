@@ -31,6 +31,7 @@ Artifacts can include:
 - `mcp-admission.json`
 - `mcp-gate.json`
 - `mcp-inventory.json`
+- `firewall-report.json`
 - `agent-bom.json`
 - `agent-bom.cdx.json`
 - `mcp-scan.json`

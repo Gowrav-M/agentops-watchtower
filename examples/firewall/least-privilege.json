@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-28T00:00:00.000Z",
+  "description": "Example least-privilege MCP Capability Firewall policy. Start default-deny, allow read-only tools, require review for external sinks, and deny shell execution.",
+  "defaultDecision": "deny",
+  "rules": [
+    {
+      "id": "tool-list_projects-allow",
+      "decision": "allow",
+      "reason": "Project listing is read-only and stays local.",
+      "match": {
+        "toolName": "list_projects"
+      }
+    },
+    {
+      "id": "tool-shell_exec-deny-dangerous-substrings",
+      "decision": "deny",
+      "severity": "high",
+      "reason": "Shell execution with destructive or download-and-run substrings is not allowed.",
+      "match": {
+        "toolName": "shell_exec"
+      },
+      "conditions": {
+        "forbiddenSubstrings": ["rm -rf", "curl |", "Invoke-WebRequest", "iwr ", "powershell -enc"]
+      }
+    },
+    {
+      "id": "tool-shell_exec-escalate",
+      "decision": "escalate",
+      "severity": "medium",
+      "reason": "Shell execution needs human review even when no known destructive substring is present.",
+      "match": {
+        "toolName": "shell_exec"
+      }
+    },
+    {
+      "id": "external-sinks-escalate",
+      "decision": "escalate",
+      "severity": "medium",
+      "reason": "External network or message sinks need review because they can exfiltrate local context.",
+      "match": {
+        "toolNamePattern": "^(send_email|external_post|post_to_slack|create_github_issue)$"
+      }
+    }
+  ]
+}

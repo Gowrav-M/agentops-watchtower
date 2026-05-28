@@ -7,7 +7,7 @@ AgentOps Watchtower is positioned as local-first safety infrastructure for codin
 1. Coding agents and CLIs are becoming a primary developer interface.
 2. MCP is becoming a standard tool/data connection layer for agents.
 3. Agent observability and evals are moving from optional dashboards to release gates.
-4. Agent security is shifting from static checklist review to runtime chain analysis, local config governance, and audit evidence.
+4. Agent security is shifting from static checklist review to least-privilege runtime policy, local config governance, chain analysis, and audit evidence.
 
 ## Repository Signal
 
@@ -20,7 +20,7 @@ High-star repositories show what developers are adopting:
 | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | Browser automation exposed through MCP is popular and powerful. | High-capability tools need gates, runtime audit, and least-privilege review. |
 | [ChromeDevTools/chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) | DevTools exposed to agents shows demand for deep runtime capabilities. | Tool outputs, browser state, and debugging APIs need clear audit trails. |
 | [langfuse/langfuse](https://github.com/langfuse/langfuse) | LLM observability, evals, prompt management, and debugging are infrastructure categories. | Watchtower should stay portable and local, then export to standards such as SARIF and OTel. |
-| [PrefectHQ/fastmcp](https://github.com/PrefectHQ/fastmcp) | MCP developer experience matters. | Adoption features such as `protect-mcp` are as important as analysis features. |
+| [PrefectHQ/fastmcp](https://github.com/PrefectHQ/fastmcp) | MCP developer experience matters. | Adoption features such as `firewall init` and `protect-mcp` are as important as analysis features. |
 
 ## Standards And Security Signal
 
@@ -39,12 +39,12 @@ Most tools are one of these:
 - observability platforms: collect traces after SDK setup;
 - MCP inspectors: manually test one server;
 - scanners: find static issues;
-- proxies: enforce runtime calls.
+- gateways and proxies: enforce runtime calls, often through hosted or preinstalled control planes.
 
 Watchtower's lane is the local bridge:
 
 ```text
-agent trace + MCP descriptor + MCP config + runtime call audit
+agent trace + MCP descriptor + MCP config + firewall policy + runtime call audit
   -> deterministic findings
   -> SARIF / OTel / AgentBOM / signed evidence
   -> CI and security review
@@ -60,7 +60,8 @@ The GitHub front page should behave like a product demo:
 - badges that signal CI, runtime, license, Node support, and local-first posture;
 - visual pipeline diagram before long text;
 - one-command demo;
-- one command that solves a real adoption problem: `protect-mcp`;
+- one command that solves a real control problem: `firewall init`;
+- one command that solves a real adoption problem: `protect-mcp --firewall`;
 - capability matrix with commands and artifacts;
 - links to security standards and industry signals;
 - clear development, contribution, and security reporting paths.
@@ -71,6 +72,6 @@ The next feature work should be chosen only if it strengthens the same lane:
 
 1. Streamable HTTP MCP proxy mode.
 2. Signed approval prompts for high-risk tool calls.
-3. Policy presets for common MCP server classes.
+3. Capability Firewall presets for common MCP server classes.
 4. Native adapters for Codex, Claude Code, Cursor, OpenCode, Gemini CLI, and OpenHands traces.
 5. Local HTML report viewer with attack graph visualization.

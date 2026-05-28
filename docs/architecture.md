@@ -11,6 +11,7 @@ flowchart LR
   CLI --> Baseline["MCP baseline diff"]
   CLI --> Admission["MCP admission gate"]
   CLI --> Gate["MCP preflight gate"]
+  CLI --> Firewall["Capability Firewall"]
   CLI --> Proxy["MCP runtime proxy"]
   CLI --> Protect["MCP config protection"]
   CLI --> AttackGraph["Runtime attack graph"]
@@ -23,8 +24,11 @@ flowchart LR
   Baseline --> Findings
   Findings --> Admission
   Findings --> Gate
+  Scanner --> Firewall
   Protect --> Proxy
   Gate --> Proxy
+  Firewall --> Proxy
+  Firewall --> Evidence
   Proxy --> AttackGraph
   Proxy --> Evidence
   Admission --> Evidence
@@ -56,7 +60,7 @@ flowchart LR
 
 Watchtower stores normalized runs in `.watchtower/runs/runs.jsonl`. Each line is one validated `AgentRun`.
 
-Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. Protected MCP config copies, backups, and rollback manifests are stored in `.watchtower/protected/`. Reports, AgentBOM artifacts, MCP gate decisions, proxy audit logs, runtime attack graphs, OTel-style spans, SARIF, and scan outputs are written under `.watchtower/reports/`.
+Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. Capability Firewall policy is stored in `.watchtower/firewall.json`. Protected MCP config copies, backups, and rollback manifests are stored in `.watchtower/protected/`. Reports, AgentBOM artifacts, MCP gate decisions, firewall simulation reports, proxy audit logs, runtime attack graphs, OTel-style spans, SARIF, and scan outputs are written under `.watchtower/reports/`.
 
 ## Main Modules
 
@@ -66,6 +70,7 @@ Approved MCP fingerprints are stored in `.watchtower/baselines/mcp-tools.json`. 
 - `src/core/evidence.ts`: tamper-evident evidence bundles and verification.
 - `src/core/agentBom.ts`: Agent Bill of Materials and CycloneDX-compatible export.
 - `src/core/mcpGate.ts`: selected-server preflight gate and launch-plan reports.
+- `src/core/firewall.ts`: least-privilege MCP Capability Firewall config generation, invocation decisions, and trace simulation reports.
 - `src/core/mcpProtect.ts`: MCP client config wrapping and rollback manifest creation.
 - `src/core/mcpProxy.ts`: stdio JSON-RPC MCP proxy enforcement and audit records.
 - `src/core/attackGraph.ts`: runtime tool-chain classification, graph edges, and attack-path findings.

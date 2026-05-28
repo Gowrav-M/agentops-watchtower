@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 - 2026-05-28
+
+- Added `firewall init` to generate default-deny Capability Firewall policies from MCP descriptors.
+- Added `firewall simulate` to replay traces through local allow/deny/escalation policy and write firewall reports.
+- Added `proxy-mcp --firewall` enforcement before runtime attack graph and default proxy checks.
+- Added `protect-mcp --firewall` pass-through so protected client configs can install firewall policy without hand-editing JSON.
+- Added firewall reports to demo output and evidence bundles.
+- Added firewall examples, documentation, tests, and package keywords.
+
 ## 1.3.0 - 2026-05-28
 
 - Added `protect-mcp` to generate protected MCP client config copies that route one server through `proxy-mcp`.

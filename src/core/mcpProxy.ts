@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { analyzeRuns } from "./attackGraph.js";
 import { writeJsonFile } from "./files.js";
+import { evaluateFirewallToolCall, type FirewallConfig } from "./firewall.js";
 import type { ConfiguredMcpServer } from "./mcpInventory.js";
 import type { WatchtowerConfig } from "./policy.js";
 import { createFinding } from "./risk.js";
@@ -75,6 +76,7 @@ export interface McpProxyState {
   readonly serverName?: string;
   readonly tools: readonly McpToolDescriptor[];
   readonly policy: WatchtowerConfig["policy"];
+  readonly firewall?: FirewallConfig;
   readonly run: AgentRun;
   readonly events: McpProxyAuditEvent[];
   readonly pendingByRequestId: Map<string, { eventId: string; toolCallId: string }>;
@@ -85,6 +87,7 @@ export interface CreateMcpProxyStateInput {
   serverName?: string;
   tools?: readonly McpToolDescriptor[];
   policy?: Partial<WatchtowerConfig["policy"]>;
+  firewall?: FirewallConfig;
 }
 
 export interface RunStdioMcpProxyOptions extends CreateMcpProxyStateInput {
@@ -121,6 +124,7 @@ export function createMcpProxyState(input: CreateMcpProxyStateInput = {}): McpPr
     ...(input.serverName === undefined ? {} : { serverName: input.serverName }),
     tools: input.tools ?? [],
     policy,
+    ...(input.firewall === undefined ? {} : { firewall: input.firewall }),
     run: {
       id: `mcp-proxy-${generatedAt.replaceAll(/[:.]/gu, "-")}`,
       agent: "mcp-proxy",
@@ -142,6 +146,15 @@ export function evaluateMcpProxyRequest(state: McpProxyState, request: JsonRpcRe
   }
 
   const toolCall = createToolCall(state, toolCallRequest, timestamp, "unknown");
+  const firewallFinding = findFirewallFinding(state, toolCall);
+  if (firewallFinding !== undefined) {
+    const blockedCall = { ...toolCall, status: "blocked" as const, error: firewallFinding.title };
+    state.run.toolCalls.push(blockedCall);
+    state.run.findings.push(firewallFinding);
+    state.events.push(createAuditEvent(state, toolCallRequest, blockedCall, timestamp, "block", "blocked", firewallFinding));
+    return { action: "block", finding: firewallFinding };
+  }
+
   const chainFinding = findRuntimeChainFinding(state, toolCall);
   const directFinding = chainFinding ?? findDirectToolFinding(state, toolCall);
 
@@ -246,7 +259,8 @@ export async function runStdioMcpProxy(options: RunStdioMcpProxyOptions): Promis
     serverName: options.server.name,
     ...(options.generatedAt === undefined ? {} : { generatedAt: options.generatedAt }),
     ...(options.tools === undefined ? {} : { tools: options.tools }),
-    ...(options.policy === undefined ? {} : { policy: options.policy })
+    ...(options.policy === undefined ? {} : { policy: options.policy }),
+    ...(options.firewall === undefined ? {} : { firewall: options.firewall })
   });
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
@@ -403,6 +417,20 @@ function findRuntimeChainFinding(state: McpProxyState, proposedCall: ToolCall): 
     generatedAt: proposedCall.timestamp
   });
   return graph.findings.find((finding) => findingBlocksCurrentCall(finding, proposedCall.toolName));
+}
+
+function findFirewallFinding(state: McpProxyState, toolCall: ToolCall): RiskFinding | undefined {
+  if (state.firewall === undefined) {
+    return undefined;
+  }
+
+  const decision = evaluateFirewallToolCall(state.firewall, {
+    timestamp: toolCall.timestamp,
+    ...(toolCall.serverName === undefined ? {} : { serverName: toolCall.serverName }),
+    toolName: toolCall.toolName,
+    arguments: toolCall.arguments
+  });
+  return decision.action === "allow" ? undefined : decision.finding;
 }
 
 function findingBlocksCurrentCall(finding: RiskFinding, toolName: string): boolean {

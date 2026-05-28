@@ -68,6 +68,8 @@ v1.2 adds the stdio MCP runtime proxy. This moves Watchtower from detective cont
 
 v1.3 adds MCP protect mode. This closes the adoption gap for the proxy: developers can generate a protected MCP client config or safely edit in place with a backup and rollback manifest.
 
+v1.4 adds the Capability Firewall. This responds to the next industrial gap: least-privilege enforcement cannot live only in prompts or static scanner output. Teams need a local policy file that can be generated from descriptors, simulated from traces, attached to evidence bundles, and enforced before stdio MCP tool calls execute. The implementation stays local-first and deterministic while matching the market direction toward gateway policy, deny-by-default control, and auditable invocation decisions.
+
 ## Positioning Update - 2026-05-28
 
 The README and docs were updated to reflect a stronger public positioning:
@@ -76,6 +78,14 @@ The README and docs were updated to reflect a stronger public positioning:
 - top repositories in the category teach that fast adoption comes from visible quickstarts, strong examples, diagrams, and concrete workflows;
 - README structure now follows GitHub's recommended reader path: what it does, why it is useful, how to start, where to learn more, and how to contribute;
 - standards links are surfaced early so recruiters and security-minded developers understand the industrial relevance immediately.
+
+## v1.4 Web Signal - 2026-05-28
+
+- Docker MCP Gateway positions the gateway as secure infrastructure for agentic AI and emphasizes controlled MCP server execution.
+- Permit MCP Gateway explicitly markets identity-aware access control, least privilege by default, deny-by-default policy, and complete audit trails.
+- The 2026 "Prompts Don't Protect" paper argues for architectural enforcement at tool discovery and tool invocation because prompt-only restrictions leave residual risk.
+- VIPER-MCP research highlights privileged MCP operations such as shell execution, network access, and file-system manipulation as direct paths to sensitive sinks.
+- CVE-2025-49596 in MCP Inspector shows that unauthenticated stdio command launch paths can become critical developer-machine exposure.
 
 ## Source References
 
@@ -88,3 +98,8 @@ The README and docs were updated to reflect a stronger public positioning:
 - GitHub README guidance: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
 - CycloneDX specification overview: https://cyclonedx.org/specification/overview/
 - CycloneDX AI/ML-BOM capability: https://cyclonedx.org/capabilities/mlbom/
+- Docker MCP Gateway: https://docs.docker.com/ai/mcp-catalog-and-toolkit/mcp-gateway/
+- Permit MCP Gateway: https://docs.permit.io/permit-mcp-gateway/
+- Prompts Don't Protect: https://arxiv.org/abs/2605.18414
+- VIPER-MCP: https://arxiv.org/abs/2605.21392
+- NVD CVE-2025-49596: https://nvd.nist.gov/vuln/detail/CVE-2025-49596

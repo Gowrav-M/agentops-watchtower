@@ -28,8 +28,9 @@ npx agentops-watchtower inventory-mcp --fail-on high
 npx agentops-watchtower agent-bom --config .mcp.json --descriptor mcp-tools.json --fail-on high
 npx agentops-watchtower admit-mcp --descriptor mcp-tools.json --config .mcp.json --fail-on high
 npx agentops-watchtower gate-mcp --config .mcp.json --server github --descriptor mcp-tools.json --fail-on high
+npx agentops-watchtower firewall simulate --config .watchtower/firewall.json --trace trace.jsonl --fail-on high
 npx agentops-watchtower proxy-mcp --config .mcp.json --server github --descriptor mcp-tools.json --dry-run --fail-on high
-npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json --fail-on high
+npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json --firewall .watchtower/firewall.json --fail-on high
 npx agentops-watchtower analyze-run --trace trace.jsonl --fail-on high
 ```
 
@@ -41,7 +42,7 @@ info < low < medium < high < critical
 
 If a finding is at or above the threshold, the command exits non-zero. That makes Watchtower usable in GitHub Actions, pre-merge checks, and internal release gates.
 
-Policy gates apply to scanner findings, report findings, AgentBOM findings, MCP baseline drift findings, MCP config inventory findings, MCP admission findings, MCP preflight gate findings, MCP proxy preflight findings, and runtime attack graph findings. During live proxying, `allowDestructiveTools` and `allowOpenWorldTools` also affect whether matching `tools/call` requests are forwarded or blocked. `protect-mcp --fail-on` passes the same threshold through to the generated proxy wrapper.
+Policy gates apply to scanner findings, report findings, AgentBOM findings, MCP baseline drift findings, MCP config inventory findings, MCP admission findings, MCP preflight gate findings, Capability Firewall simulation findings, MCP proxy preflight findings, and runtime attack graph findings. During live proxying, explicit firewall deny/escalate rules run before the proxy's default destructive/open-world checks. `protect-mcp --fail-on` passes the same threshold through to the generated proxy wrapper.
 
 ## Tool-Poisoning Checks
 

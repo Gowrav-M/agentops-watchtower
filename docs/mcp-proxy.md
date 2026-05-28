@@ -10,7 +10,8 @@
 npx agentops-watchtower proxy-mcp \
   --config .mcp.json \
   --server github \
-  --descriptor mcp-tools.json
+  --descriptor mcp-tools.json \
+  --firewall .watchtower/firewall.json
 ```
 
 Dry-run mode performs the same preflight gate and writes an empty audit artifact without launching the server:
@@ -32,13 +33,14 @@ Output:
 To insert the proxy into a real MCP client config without manual JSON edits, use `protect-mcp`:
 
 ```bash
-npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json
+npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json --firewall .watchtower/firewall.json
 ```
 
 ## What It Blocks
 
-The v1.2 proxy intercepts stdio JSON-RPC messages and evaluates `tools/call` before forwarding them. It can block:
+The v1.4 proxy intercepts stdio JSON-RPC messages and evaluates `tools/call` before forwarding them. It can block:
 
+- explicit Capability Firewall deny or approval-required decisions when `--firewall` is provided;
 - direct destructive or command-execution tool calls when `allowDestructiveTools` is false;
 - open-world tool calls when `allowOpenWorldTools` is false;
 - runtime attack chains detected by Watchtower, such as `read_secret -> send_email`;
@@ -59,8 +61,8 @@ Blocked requests receive a local JSON-RPC error:
 
 ## Audit
 
-The audit file records redacted tool arguments, allow/block decisions, response status, result summaries, and findings. It is included in evidence bundles when present.
+The audit file records redacted tool arguments, allow/block decisions, response status, result summaries, and findings. It is included in evidence bundles when present. Firewall simulation reports are also included by `attest-mcp` when present.
 
 ## Boundaries
 
-v1.2 supports local stdio MCP servers. It does not yet proxy Streamable HTTP/SSE servers, prompt for interactive approvals, or inject credentials from config env blocks. Those are deliberate next layers after deterministic stdio enforcement is solid.
+v1.4 supports local stdio MCP servers. It does not yet proxy Streamable HTTP/SSE servers, prompt for interactive approvals, or inject credentials from config env blocks. Those are deliberate next layers after deterministic stdio enforcement is solid.

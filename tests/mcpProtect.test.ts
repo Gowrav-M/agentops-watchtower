@@ -23,8 +23,9 @@ describe("MCP config protection", () => {
         serverName: "github",
         originalConfigPath: "D:/repo/.mcp.json",
         protectedConfigPath: "D:/repo/.watchtower/protected/.mcp.protected.json",
-        packageSpec: "agentops-watchtower@1.3.0",
+        packageSpec: "agentops-watchtower@1.4.0",
         descriptorPath: "D:/repo/mcp-tools.json",
+        firewallPath: "D:/repo/.watchtower/firewall.json",
         failOn: "high"
       }
     );
@@ -37,7 +38,7 @@ describe("MCP config protection", () => {
           command: "npx",
           args: [
             "-y",
-            "agentops-watchtower@1.3.0",
+            "agentops-watchtower@1.4.0",
             "proxy-mcp",
             "--config",
             "D:/repo/.mcp.json",
@@ -45,6 +46,8 @@ describe("MCP config protection", () => {
             "github",
             "--descriptor",
             "D:/repo/mcp-tools.json",
+            "--firewall",
+            "D:/repo/.watchtower/firewall.json",
             "--fail-on",
             "high"
           ]
@@ -78,7 +81,7 @@ describe("MCP config protection", () => {
         originalConfigPath: "D:/repo/.mcp.json",
         protectedConfigPath: "D:/repo/.mcp.json",
         backupConfigPath: "D:/repo/.watchtower/protected/.mcp.backup.json",
-        packageSpec: "agentops-watchtower@1.3.0"
+        packageSpec: "agentops-watchtower@1.4.0"
       }
     );
 
@@ -86,7 +89,7 @@ describe("MCP config protection", () => {
       command: "npx",
       args: [
         "-y",
-        "agentops-watchtower@1.3.0",
+        "agentops-watchtower@1.4.0",
         "proxy-mcp",
         "--config",
         "D:/repo/.watchtower/protected/.mcp.backup.json",
@@ -105,7 +108,7 @@ describe("MCP config protection", () => {
           mcpServers: {
             github: {
               command: "npx",
-              args: ["-y", "agentops-watchtower@1.3.0", "proxy-mcp", "--config", "backup.json", "--server", "github"]
+              args: ["-y", "agentops-watchtower@1.4.0", "proxy-mcp", "--config", "backup.json", "--server", "github"]
             }
           }
         },
@@ -114,7 +117,7 @@ describe("MCP config protection", () => {
           serverName: "github",
           originalConfigPath: "D:/repo/.mcp.json",
           protectedConfigPath: "D:/repo/.watchtower/protected/.mcp.protected.json",
-          packageSpec: "agentops-watchtower@1.3.0"
+          packageSpec: "agentops-watchtower@1.4.0"
         }
       )
     ).toThrow(/already protected/u);
@@ -136,7 +139,7 @@ describe("MCP config protection", () => {
         originalConfigPath: "D:/repo/.mcp.json",
         protectedConfigPath: "D:/repo/.mcp.json",
         backupConfigPath: "D:/repo/.watchtower/protected/.mcp.backup.json",
-        packageSpec: "agentops-watchtower@1.3.0"
+        packageSpec: "agentops-watchtower@1.4.0"
       }
     );
 
@@ -168,7 +171,7 @@ describe("MCP config protection", () => {
         originalConfigPath: "D:/repo/.mcp.json",
         protectedConfigPath: "D:/repo/.mcp.json",
         backupConfigPath: "D:/repo/.watchtower/protected/.mcp.backup.json",
-        packageSpec: "agentops-watchtower@1.3.0"
+        packageSpec: "agentops-watchtower@1.4.0"
       }
     );
 

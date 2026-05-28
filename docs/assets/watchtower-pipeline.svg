@@ -1,11 +1,11 @@
 <svg width="920" height="360" viewBox="0 0 920 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">AgentOps Watchtower pipeline</title>
-  <desc id="desc">Agent traces and MCP configs flow into local Watchtower analysis, then produce reports, security exports, telemetry, and signed evidence.</desc>
+  <desc id="desc">Agent traces and MCP configs flow into local Watchtower analysis, firewall policy, reports, security exports, telemetry, and signed evidence.</desc>
   <rect width="920" height="360" rx="22" fill="#0B1220"/>
   <rect x="18" y="18" width="884" height="324" rx="18" fill="#111827" stroke="#334155"/>
 
   <text x="44" y="58" fill="#F8FAFC" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="700">AgentOps Watchtower</text>
-  <text x="44" y="86" fill="#CBD5E1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Local black box recorder, MCP safety scanner, runtime proxy, and evidence bundle for coding agents</text>
+  <text x="44" y="86" fill="#CBD5E1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Local black box recorder, MCP safety scanner, capability firewall, and evidence bundle for coding agents</text>
 
   <rect x="44" y="126" width="176" height="86" rx="12" fill="#172554" stroke="#3B82F6"/>
   <text x="64" y="156" fill="#DBEAFE" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="700">Inputs</text>
@@ -26,7 +26,7 @@
   <rect x="332" y="166" width="92" height="34" rx="8" fill="#0F766E"/>
   <text x="350" y="188" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Scan</text>
   <rect x="438" y="166" width="92" height="34" rx="8" fill="#0F766E"/>
-  <text x="459" y="188" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Gate</text>
+  <text x="452" y="188" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Firewall</text>
   <rect x="332" y="214" width="92" height="34" rx="8" fill="#115E59"/>
   <text x="350" y="236" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Proxy</text>
   <rect x="438" y="214" width="92" height="34" rx="8" fill="#115E59"/>

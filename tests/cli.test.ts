@@ -267,6 +267,97 @@ describe("cli", () => {
     expect(audit).toContain("\"serverName\": \"localDocs\"");
   });
 
+  it("firewall init creates a least-privilege policy config from a descriptor", async () => {
+    const cwd = await makeTempDir();
+    const descriptorPath = join(cwd, "tools.json");
+    await writeFile(
+      descriptorPath,
+      JSON.stringify({
+        tools: [
+          {
+            name: "list_projects",
+            description: "List projects without changing state.",
+            inputSchema: { type: "object", properties: { workspaceId: { type: "string" } } },
+            outputSchema: { type: "object", properties: { projects: { type: "array" } } },
+            annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false }
+          },
+          {
+            name: "shell_exec",
+            description: "Execute a shell command on the local workstation.",
+            inputSchema: { type: "object", properties: { command: { type: "string" } } },
+            outputSchema: { type: "object", properties: { stdout: { type: "string" } } },
+            annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
+          }
+        ]
+      }),
+      "utf8"
+    );
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(["node", "watchtower", "firewall", "init", "--descriptor", descriptorPath], { from: "node" });
+
+    const config = await readFile(join(cwd, ".watchtower", "firewall.json"), "utf8");
+    expect(output.join("\n")).toContain("Firewall config written");
+    expect(config).toContain("\"defaultDecision\": \"deny\"");
+    expect(config).toContain("\"tool-shell_exec-deny\"");
+  });
+
+  it("firewall simulate writes a report and fails policy for denied calls", async () => {
+    const cwd = await makeTempDir();
+    const configPath = join(cwd, "firewall.json");
+    const tracePath = join(cwd, "trace.jsonl");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        generatedAt: "2026-05-28T00:00:00.000Z",
+        defaultDecision: "allow",
+        rules: [
+          {
+            id: "deny-shell",
+            decision: "deny",
+            severity: "high",
+            reason: "Shell execution requires a reviewed environment.",
+            match: { toolName: "shell_exec" }
+          }
+        ]
+      }),
+      "utf8"
+    );
+    await writeFile(
+      tracePath,
+      [
+        JSON.stringify({
+          type: "session",
+          id: "firewall-demo",
+          agent: "codex",
+          startedAt: "2026-05-28T00:00:00.000Z"
+        }),
+        JSON.stringify({
+          type: "tool_call",
+          id: "tool-1",
+          timestamp: "2026-05-28T00:00:01.000Z",
+          toolName: "shell_exec",
+          arguments: { command: "cat package.json" },
+          status: "success"
+        })
+      ].join("\n"),
+      "utf8"
+    );
+    const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });
+
+    await expect(
+      cli.parseAsync(["node", "watchtower", "firewall", "simulate", "--config", configPath, "--trace", tracePath, "--fail-on", "high"], {
+        from: "node"
+      })
+    ).rejects.toThrow(/Policy threshold failed/u);
+
+    const report = await readFile(join(cwd, ".watchtower", "reports", "firewall-report.json"), "utf8");
+    expect(report).toContain("\"denied\": 1");
+    expect(report).toContain("firewall.tool_call_denied");
+  });
+
   it("protect-mcp writes a protected config copy and manifest without modifying the original", async () => {
     const cwd = await makeTempDir();
     const configPath = join(cwd, "mcp.json");
@@ -293,7 +384,7 @@ describe("cli", () => {
     const manifest = await readFile(join(cwd, ".watchtower", "protected", "mcp.protection.json"), "utf8");
     const original = await readFile(configPath, "utf8");
     expect(output.join("\n")).toContain("Protected config written");
-    expect(protectedConfig).toContain("agentops-watchtower@1.3.0");
+    expect(protectedConfig).toContain("agentops-watchtower@1.4.0");
     expect(protectedConfig).toContain("proxy-mcp");
     expect(manifest).toContain("\"mode\": \"copy\"");
     expect(original).toContain("docs-server.mjs");
