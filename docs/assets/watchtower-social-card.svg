@@ -1,0 +1,17 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AgentOps Watchtower social preview</title>
+  <desc id="desc">A social preview card for AgentOps Watchtower describing it as a black box recorder and firewall for AI coding agents.</desc>
+  <rect width="1280" height="640" fill="#0B1020"/>
+  <rect x="60" y="60" width="1160" height="520" rx="32" fill="#111827" stroke="#334155" stroke-width="2"/>
+  <text x="110" y="156" fill="#38BDF8" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="700">AgentOps Watchtower</text>
+  <text x="110" y="250" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="64" font-weight="800">Black box recorder</text>
+  <text x="110" y="326" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="64" font-weight="800">and firewall for</text>
+  <text x="110" y="402" fill="#F97316" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="64" font-weight="800">AI coding agents.</text>
+  <text x="110" y="470" fill="#CBD5E1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28">MCP safety scan -> runtime attack graph -> local reports -> signed evidence</text>
+  <rect x="888" y="138" width="236" height="74" rx="18" fill="#0F172A" stroke="#334155"/>
+  <text x="924" y="186" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24">npx ... setup</text>
+  <rect x="888" y="242" width="236" height="74" rx="18" fill="#0F172A" stroke="#334155"/>
+  <text x="924" y="290" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24">npx ... check</text>
+  <rect x="888" y="346" width="236" height="74" rx="18" fill="#0F172A" stroke="#334155"/>
+  <text x="924" y="394" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24">npx ... protect</text>
+</svg>

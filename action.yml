@@ -1,6 +1,9 @@
 name: AgentOps Watchtower
-description: Run local-first AgentOps Watchtower checks in GitHub Actions.
+description: Black box recorder, MCP safety scanner, runtime firewall, and evidence generator for AI agent workflows.
 author: Gowrav M
+branding:
+  icon: shield
+  color: orange
 
 inputs:
   descriptor:
