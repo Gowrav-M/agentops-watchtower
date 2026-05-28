@@ -9,6 +9,7 @@
 - `mcp/stdio-client-config.json`: local stdio MCP config for proxy dry-runs.
 - `mcp/stdio-echo-server.mjs`: tiny stdio JSON-RPC echo server used by proxy examples.
 - `firewall/least-privilege.json`: sample Capability Firewall policy with allow, deny, and escalation rules.
+- `slash-commands/`: repository-level templates for `/watchtower-check`, `/watchtower-protect`, and `/watchtower-report`.
 
 ## Traces
 
@@ -21,6 +22,9 @@ Run:
 
 ```bash
 npm run dev -- demo
+npm run dev -- setup --descriptor examples/mcp/risky-tools.json
+npm run dev -- check --descriptor examples/mcp/safe-tools.json --trace examples/traces/firewall-violation.jsonl --firewall examples/firewall/least-privilege.json
+npm run dev -- protect --config examples/mcp/stdio-client-config.json --server local-echo --firewall examples/firewall/least-privilege.json
 npm run dev -- scan-mcp examples/mcp/risky-tools.json --sarif
 npm run dev -- baseline-mcp examples/mcp/safe-tools.json
 npm run dev -- diff-mcp examples/mcp/safe-tools.json

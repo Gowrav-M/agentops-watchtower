@@ -41,6 +41,60 @@ export interface CliContext {
 
 const currentFile = fileURLToPath(import.meta.url);
 const packageRoot = resolve(dirname(currentFile), "..");
+const advancedCommandList = [
+  "scan-mcp",
+  "baseline-mcp",
+  "diff-mcp",
+  "inventory-mcp",
+  "admit-mcp",
+  "gate-mcp",
+  "firewall",
+  "proxy-mcp",
+  "protect-mcp",
+  "agent-bom",
+  "analyze-run",
+  "export-otel",
+  "attest-mcp"
+];
+
+interface LocalWatchtowerConfigFile {
+  schemaVersion: 1;
+  storage: "local-jsonl";
+  runsFile: string;
+  baselineFile: string;
+  reportsDir: string;
+  redaction: "enabled";
+  policy: {
+    failOn: "critical";
+    requireOutputSchema: true;
+    allowDestructiveTools: false;
+    allowOpenWorldTools: true;
+    detectToolPoisoning: true;
+  };
+}
+
+interface InitializeWatchtowerResult {
+  paths: ReturnType<typeof getWatchtowerPaths>;
+  created: boolean;
+}
+
+interface ProtectMcpCommandOptions {
+  config: string;
+  server: string;
+  out?: string;
+  inPlace?: boolean;
+  descriptor?: string;
+  baseline?: string;
+  firewall?: string;
+  failOn?: string;
+  package?: string;
+}
+
+interface ProtectMcpCommandResult {
+  protectedConfigPath: string;
+  manifestPath: string;
+  backupConfigPath?: string;
+}
 
 function readPackageVersion(): string {
   const packageJson = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as { version?: unknown };
@@ -67,28 +121,78 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     .command("init")
     .description("Create local .watchtower config and storage folders.")
     .action(async () => {
-      const paths = await ensureWatchtowerDirs(ctx.cwd);
-      if (await fileExists(paths.config)) {
-        ctx.stdout(`Already initialized at ${paths.root}`);
+      const result = await initializeWatchtower(ctx.cwd);
+      if (!result.created) {
+        ctx.stdout(`Already initialized at ${result.paths.root}`);
         return;
       }
 
-      await writeJsonFile(paths.config, {
-        schemaVersion: 1,
-        storage: "local-jsonl",
-        runsFile: ".watchtower/runs/runs.jsonl",
-        baselineFile: ".watchtower/baselines/mcp-tools.json",
-        reportsDir: ".watchtower/reports",
-        redaction: "enabled",
-        policy: {
-          failOn: "critical",
-          requireOutputSchema: true,
-          allowDestructiveTools: false,
-          allowOpenWorldTools: true,
-          detectToolPoisoning: true
-        }
-      });
-      ctx.stdout(`Initialized AgentOps Watchtower at ${paths.root}`);
+      ctx.stdout(`Initialized AgentOps Watchtower at ${result.paths.root}`);
+    });
+
+  program
+    .command("setup")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to use for the starter scan and firewall policy.")
+    .option("--skip-slash-commands", "Do not write local slash-command templates.")
+    .description("One-command local setup: config, starter MCP scan, firewall policy, and slash-command templates.")
+    .action(async (options: { descriptor?: string; skipSlashCommands?: boolean }) => {
+      const setup = await runSetup(ctx, options);
+      ctx.stdout(`Setup complete. ${setup.configCreated ? "Created" : "Reused"} ${setup.paths.config}`);
+      ctx.stdout(`Wrote MCP scan to ${join(setup.paths.reportsDir, "mcp-scan.json")}`);
+      ctx.stdout(`Wrote firewall policy to ${setup.paths.firewallConfigJson}`);
+      if (setup.slashCommandsWritten > 0) {
+        ctx.stdout(`Wrote ${setup.slashCommandsWritten} slash-command templates to ${setup.paths.slashCommandsDir}`);
+      }
+      ctx.stdout(`Advanced commands remain available: ${advancedCommandList.join(", ")}.`);
+    });
+
+  program
+    .command("check")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to scan and use as runtime context.")
+    .option("-m, --mcp <descriptor>", "Alias for --descriptor.")
+    .option("-c, --config <config...>", "Optional MCP client config file(s) to inventory and use as context.")
+    .option("-t, --trace <trace>", "Trace file to analyze. Defaults to stored runs or the bundled sample trace.")
+    .option("--firewall <firewall>", "Capability Firewall policy to simulate against the trace.")
+    .option("--sarif", "Also write GitHub code scanning SARIF output for combined findings.")
+    .option("--fail-on <severity>", "Exit non-zero when combined findings meet this severity.")
+    .description("One-command assessment: scan, runtime attack graph, optional firewall replay, and report.")
+    .action(
+      async (options: {
+        descriptor?: string;
+        mcp?: string;
+        config?: string[];
+        trace?: string;
+        firewall?: string;
+        sarif?: boolean;
+        failOn?: string;
+      }) => {
+        const result = await runCombinedCheck(ctx, options);
+        ctx.stdout(`Watchtower check complete. Risk score: ${result.report.summary.riskScore}. Findings: ${result.report.findings.length}.`);
+        ctx.stdout(`Reports: ${result.paths.reportMarkdown} and ${result.paths.reportHtml}`);
+        ctx.stdout(`Advanced artifacts: ${result.artifacts.join(", ")}.`);
+      }
+    );
+
+  program
+    .command("protect")
+    .requiredOption("-c, --config <config>", "MCP client JSON config to protect.")
+    .requiredOption("-s, --server <server>", "MCP server name to route through the Watchtower proxy.")
+    .option("-o, --out <out>", "Protected config output path.")
+    .option("--in-place", "Modify the original config after writing a backup and rollback manifest.")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to pass through to proxy-mcp.")
+    .option("-b, --baseline <baseline>", "Watchtower MCP baseline file to pass through to proxy-mcp.")
+    .option("--firewall <firewall>", "Capability Firewall policy config to pass through to proxy-mcp.")
+    .option("--fail-on <severity>", "Proxy policy threshold to pass through to proxy-mcp.")
+    .option("--package <packageSpec>", "npm package spec used in the protected npx wrapper.")
+    .description("Simple shortcut for protecting one MCP server while keeping protect-mcp available for full control.")
+    .action(async (options: ProtectMcpCommandOptions) => {
+      const result = await runMcpProtection(ctx, options);
+      if (result.backupConfigPath !== undefined) {
+        ctx.stdout(`Backup written to ${result.backupConfigPath}`);
+      }
+      ctx.stdout(`Protected config written to ${result.protectedConfigPath}`);
+      ctx.stdout(`Protection manifest written to ${result.manifestPath}`);
+      ctx.stdout("Advanced equivalent: agentops-watchtower protect-mcp with the same flags.");
     });
 
   program
@@ -525,50 +629,13 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     .option("--package <packageSpec>", "npm package spec used in the protected npx wrapper.")
     .description("Create a protected MCP client config that routes one server through the Watchtower proxy.")
     .action(
-      async (options: {
-        config: string;
-        server: string;
-        out?: string;
-        inPlace?: boolean;
-        descriptor?: string;
-        baseline?: string;
-        firewall?: string;
-        failOn?: string;
-        package?: string;
-      }) => {
-        const paths = await ensureWatchtowerDirs(ctx.cwd);
-        const configPath = resolve(ctx.cwd, options.config);
-        if (extname(configPath).toLowerCase() !== ".json") {
-          throw new Error("protect-mcp currently supports JSON MCP configs.");
+      async (options: ProtectMcpCommandOptions) => {
+        const result = await runMcpProtection(ctx, options);
+        if (result.backupConfigPath !== undefined) {
+          ctx.stdout(`Backup written to ${result.backupConfigPath}`);
         }
-        const rawConfig = JSON.parse(await readFile(configPath, "utf8")) as unknown;
-        const protectionPaths = getMcpProtectionPaths(ctx.cwd, paths, configPath, options.out, options.inPlace === true);
-        const packageSpec = options.package ?? `agentops-watchtower@${readPackageVersion()}`;
-        const failOn = parseSeverityOption(options.failOn);
-        const descriptorPath = options.descriptor === undefined ? undefined : resolve(ctx.cwd, options.descriptor);
-        const baselinePath = options.baseline === undefined ? undefined : resolve(ctx.cwd, options.baseline);
-        const firewallPath = options.firewall === undefined ? undefined : resolve(ctx.cwd, options.firewall);
-        const protection = createMcpProtection(rawConfig, {
-          serverName: options.server,
-          originalConfigPath: configPath,
-          protectedConfigPath: protectionPaths.protectedConfigPath,
-          ...(protectionPaths.backupConfigPath === undefined ? {} : { backupConfigPath: protectionPaths.backupConfigPath }),
-          packageSpec,
-          ...(descriptorPath === undefined ? {} : { descriptorPath }),
-          ...(baselinePath === undefined ? {} : { baselinePath }),
-          ...(firewallPath === undefined ? {} : { firewallPath }),
-          ...(failOn === undefined ? {} : { failOn })
-        });
-
-        if (protectionPaths.backupConfigPath !== undefined) {
-          await writeJsonFile(protectionPaths.backupConfigPath, rawConfig);
-          ctx.stdout(`Backup written to ${protectionPaths.backupConfigPath}`);
-        }
-        await mkdir(dirname(protectionPaths.protectedConfigPath), { recursive: true });
-        await writeJsonFile(protectionPaths.protectedConfigPath, protection.protectedConfig);
-        await writeJsonFile(protectionPaths.manifestPath, protection.manifest);
-        ctx.stdout(`Protected config written to ${protectionPaths.protectedConfigPath}`);
-        ctx.stdout(`Protection manifest written to ${protectionPaths.manifestPath}`);
+        ctx.stdout(`Protected config written to ${result.protectedConfigPath}`);
+        ctx.stdout(`Protection manifest written to ${result.manifestPath}`);
       }
     );
 
@@ -845,6 +912,259 @@ interface DoctorCheck {
   message: string;
 }
 
+interface SetupCommandResult {
+  paths: ReturnType<typeof getWatchtowerPaths>;
+  configCreated: boolean;
+  slashCommandsWritten: number;
+}
+
+interface CombinedCheckOptions {
+  descriptor?: string;
+  mcp?: string;
+  config?: string[];
+  trace?: string;
+  firewall?: string;
+  sarif?: boolean;
+  failOn?: string;
+}
+
+interface CombinedCheckResult {
+  paths: ReturnType<typeof getWatchtowerPaths>;
+  report: ReturnType<typeof createWatchtowerReport>;
+  artifacts: string[];
+}
+
+function createDefaultWatchtowerConfig(): LocalWatchtowerConfigFile {
+  return {
+    schemaVersion: 1,
+    storage: "local-jsonl",
+    runsFile: ".watchtower/runs/runs.jsonl",
+    baselineFile: ".watchtower/baselines/mcp-tools.json",
+    reportsDir: ".watchtower/reports",
+    redaction: "enabled",
+    policy: {
+      failOn: "critical",
+      requireOutputSchema: true,
+      allowDestructiveTools: false,
+      allowOpenWorldTools: true,
+      detectToolPoisoning: true
+    }
+  };
+}
+
+async function initializeWatchtower(cwd: string): Promise<InitializeWatchtowerResult> {
+  const paths = await ensureWatchtowerDirs(cwd);
+  if (await fileExists(paths.config)) {
+    return { paths, created: false };
+  }
+  await writeJsonFile(paths.config, createDefaultWatchtowerConfig());
+  return { paths, created: true };
+}
+
+async function runSetup(ctx: CliContext, options: { descriptor?: string; skipSlashCommands?: boolean }): Promise<SetupCommandResult> {
+  const initialized = await initializeWatchtower(ctx.cwd);
+  const config = await loadWatchtowerConfig(ctx.cwd);
+  const descriptorPath = options.descriptor === undefined ? bundledPath("examples", "mcp", "risky-tools.json") : resolve(ctx.cwd, options.descriptor);
+  const descriptorScan = await scanMcpDescriptorFile(descriptorPath, config.policy);
+  const firewallConfig = createFirewallConfigFromTools(descriptorScan.tools, {
+    description: `Least-privilege firewall policy generated from ${sourceUri(ctx.cwd, descriptorPath)}.`
+  });
+  await writeJsonFile(join(initialized.paths.reportsDir, "mcp-scan.json"), descriptorScan);
+  await writeJsonFile(initialized.paths.firewallConfigJson, firewallConfig);
+  const slashCommandsWritten = options.skipSlashCommands === true ? 0 : await writeSlashCommandTemplates(initialized.paths);
+  return {
+    paths: initialized.paths,
+    configCreated: initialized.created,
+    slashCommandsWritten
+  };
+}
+
+async function runCombinedCheck(ctx: CliContext, options: CombinedCheckOptions): Promise<CombinedCheckResult> {
+  const paths = await ensureWatchtowerDirs(ctx.cwd);
+  const config = await loadWatchtowerConfig(ctx.cwd);
+  const runs = await loadRunsForCommand(ctx.cwd, options.trace);
+  const artifacts: string[] = [];
+  const descriptor = options.descriptor ?? options.mcp;
+  const descriptorPath = descriptor === undefined ? undefined : resolve(ctx.cwd, descriptor);
+  let mcpFindings: RiskFinding[] = [];
+  let inventoryFindings: RiskFinding[] = [];
+  let firewallFindings: RiskFinding[] = [];
+
+  if (descriptorPath !== undefined) {
+    const descriptorScan = await scanMcpDescriptorFile(descriptorPath, config.policy);
+    await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), descriptorScan);
+    mcpFindings = descriptorScan.findings;
+    artifacts.push(join(paths.reportsDir, "mcp-scan.json"));
+  }
+
+  if (options.config !== undefined && options.config.length > 0) {
+    const inventory = await inventoryMcpConfigFiles(
+      explicitMcpConfigCandidates(options.config.map((configPath) => resolve(ctx.cwd, configPath)))
+    );
+    await writeJsonFile(paths.mcpInventoryJson, inventory);
+    inventoryFindings = inventory.findings;
+    artifacts.push(paths.mcpInventoryJson);
+  }
+
+  const graph = analyzeRuns(
+    runs,
+    await loadAttackGraphContext(ctx.cwd, paths, descriptorPath, options.config, config.policy)
+  );
+  await writeJsonFile(paths.attackGraphJson, graph);
+  artifacts.push(paths.attackGraphJson);
+
+  if (options.firewall !== undefined) {
+    const firewallConfig = await readFirewallConfigFile(resolve(ctx.cwd, options.firewall));
+    const firewallReport = simulateFirewall(firewallConfig, runs);
+    await writeJsonFile(paths.firewallReportJson, firewallReport);
+    firewallFindings = firewallReport.findings;
+    artifacts.push(paths.firewallReportJson);
+  }
+
+  const evalResults = evaluateRuns(runs);
+  const report = createWatchtowerReport({
+    runs,
+    findings: [
+      ...runs.flatMap((run) => run.findings),
+      ...mcpFindings,
+      ...inventoryFindings,
+      ...graph.findings,
+      ...firewallFindings
+    ],
+    evalResults
+  });
+  await writeReportFiles(paths, report, renderMarkdownReport(report), renderHtmlReport(report));
+  artifacts.push(paths.reportJson, paths.reportMarkdown, paths.reportHtml);
+
+  if (options.sarif === true) {
+    const tracePath = options.trace === undefined ? undefined : resolve(ctx.cwd, options.trace);
+    await writeJsonFile(
+      paths.sarifJson,
+      exportSarif(report.findings, {
+        ...(descriptorPath === undefined && tracePath === undefined
+          ? {}
+          : { sourceUri: sourceUri(ctx.cwd, descriptorPath ?? tracePath ?? ctx.cwd) }),
+        invocationCommandLine: "agentops-watchtower check --sarif"
+      })
+    );
+    artifacts.push(paths.sarifJson);
+  }
+
+  const failOn = parseSeverityOption(options.failOn) ?? config.policy.failOn;
+  if (shouldFailForFindings(report.findings, failOn)) {
+    throw new Error(summarizePolicyFailure(report.findings, failOn));
+  }
+
+  return { paths, report, artifacts };
+}
+
+async function runMcpProtection(ctx: CliContext, options: ProtectMcpCommandOptions): Promise<ProtectMcpCommandResult> {
+  const paths = await ensureWatchtowerDirs(ctx.cwd);
+  const configPath = resolve(ctx.cwd, options.config);
+  if (extname(configPath).toLowerCase() !== ".json") {
+    throw new Error("protect-mcp currently supports JSON MCP configs.");
+  }
+  const rawConfig = JSON.parse(await readFile(configPath, "utf8")) as unknown;
+  const protectionPaths = getMcpProtectionPaths(ctx.cwd, paths, configPath, options.out, options.inPlace === true);
+  const packageSpec = options.package ?? `agentops-watchtower@${readPackageVersion()}`;
+  const failOn = parseSeverityOption(options.failOn);
+  const descriptorPath = options.descriptor === undefined ? undefined : resolve(ctx.cwd, options.descriptor);
+  const baselinePath = options.baseline === undefined ? undefined : resolve(ctx.cwd, options.baseline);
+  const firewallPath = options.firewall === undefined ? undefined : resolve(ctx.cwd, options.firewall);
+  const protection = createMcpProtection(rawConfig, {
+    serverName: options.server,
+    originalConfigPath: configPath,
+    protectedConfigPath: protectionPaths.protectedConfigPath,
+    ...(protectionPaths.backupConfigPath === undefined ? {} : { backupConfigPath: protectionPaths.backupConfigPath }),
+    packageSpec,
+    ...(descriptorPath === undefined ? {} : { descriptorPath }),
+    ...(baselinePath === undefined ? {} : { baselinePath }),
+    ...(firewallPath === undefined ? {} : { firewallPath }),
+    ...(failOn === undefined ? {} : { failOn })
+  });
+
+  if (protectionPaths.backupConfigPath !== undefined) {
+    await writeJsonFile(protectionPaths.backupConfigPath, rawConfig);
+  }
+  await mkdir(dirname(protectionPaths.protectedConfigPath), { recursive: true });
+  await writeJsonFile(protectionPaths.protectedConfigPath, protection.protectedConfig);
+  await writeJsonFile(protectionPaths.manifestPath, protection.manifest);
+
+  const result: ProtectMcpCommandResult = {
+    protectedConfigPath: protectionPaths.protectedConfigPath,
+    manifestPath: protectionPaths.manifestPath
+  };
+  if (protectionPaths.backupConfigPath !== undefined) {
+    result.backupConfigPath = protectionPaths.backupConfigPath;
+  }
+  return result;
+}
+
+async function writeSlashCommandTemplates(paths: ReturnType<typeof getWatchtowerPaths>): Promise<number> {
+  const templates = createSlashCommandTemplates();
+  await mkdir(paths.slashCommandsDir, { recursive: true });
+  await Promise.all(
+    templates.map((template) => writeFile(join(paths.slashCommandsDir, template.filename), template.content, "utf8"))
+  );
+  return templates.length;
+}
+
+function createSlashCommandTemplates(): Array<{ filename: string; content: string }> {
+  return [
+    {
+      filename: "watchtower-check.md",
+      content: [
+        "# /watchtower-check",
+        "",
+        "Run a local AgentOps Watchtower assessment without sending data to a cloud service.",
+        "",
+        "Suggested command:",
+        "",
+        "```bash",
+        "npx agentops-watchtower check --descriptor <mcp-tools.json> --trace <trace.jsonl> --firewall .watchtower/firewall.json",
+        "```",
+        "",
+        "Keep the advanced commands available when deeper control is needed: scan-mcp, inventory-mcp, analyze-run, firewall simulate, report, and attest-mcp.",
+        ""
+      ].join("\n")
+    },
+    {
+      filename: "watchtower-protect.md",
+      content: [
+        "# /watchtower-protect",
+        "",
+        "Protect one configured stdio MCP server by routing it through the Watchtower proxy and optional Capability Firewall.",
+        "",
+        "Suggested command:",
+        "",
+        "```bash",
+        "npx agentops-watchtower protect --config <mcp-client.json> --server <server-name> --firewall .watchtower/firewall.json",
+        "```",
+        "",
+        "Use protect-mcp directly when you need the full advanced flag surface.",
+        ""
+      ].join("\n")
+    },
+    {
+      filename: "watchtower-report.md",
+      content: [
+        "# /watchtower-report",
+        "",
+        "Generate human-readable and machine-readable evidence for the latest local agent run.",
+        "",
+        "Suggested command:",
+        "",
+        "```bash",
+        "npx agentops-watchtower report --analyze",
+        "```",
+        "",
+        "For CI or audit evidence, follow with: npx agentops-watchtower attest-mcp.",
+        ""
+      ].join("\n")
+    }
+  ];
+}
+
 async function runDoctor(cwd: string): Promise<DoctorCheck[]> {
   const majorVersion = Number.parseInt(process.versions.node.split(".")[0] ?? "0", 10);
   const paths = getWatchtowerPaths(cwd);
@@ -1006,6 +1326,7 @@ function parseMcpProtectionManifest(value: unknown): McpProtectionManifest {
   const backupConfigPath = optionalStringField(value, "backupConfigPath");
   const descriptorPath = optionalStringField(value, "descriptorPath");
   const baselinePath = optionalStringField(value, "baselinePath");
+  const firewallPath = optionalStringField(value, "firewallPath");
   const failOn = optionalStringField(value, "failOn");
   if (backupConfigPath !== undefined) {
     manifest.backupConfigPath = backupConfigPath;
@@ -1015,6 +1336,9 @@ function parseMcpProtectionManifest(value: unknown): McpProtectionManifest {
   }
   if (baselinePath !== undefined) {
     manifest.baselinePath = baselinePath;
+  }
+  if (firewallPath !== undefined) {
+    manifest.firewallPath = firewallPath;
   }
   if (failOn !== undefined) {
     manifest.failOn = failOn;

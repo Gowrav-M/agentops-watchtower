@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 - 2026-05-28
+
+- Added `setup` for one-command local onboarding with config, starter MCP scan, firewall policy, and slash-command templates.
+- Added `check` to compose descriptor scanning, runtime attack graph analysis, optional firewall replay, reports, and SARIF from one command.
+- Added `protect` as a friendly shortcut over `protect-mcp` while keeping the advanced command fully available.
+- Added tracked slash-command examples and docs for `/watchtower-check`, `/watchtower-protect`, and `/watchtower-report`.
+- Updated README quick start so simple commands come first without hiding CI and power-user workflows.
+
 ## 1.4.0 - 2026-05-28
 
 - Added `firewall init` to generate default-deny Capability Firewall policies from MCP descriptors.
