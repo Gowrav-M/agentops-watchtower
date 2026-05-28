@@ -3,6 +3,14 @@
   "version": "1.5.0",
   "description": "Local-first black box recorder, MCP safety scanner, runtime Capability Firewall, and evidence generator for AI agent workflows.",
   "type": "module",
+  "homepage": "https://github.com/Gowrav-M/agentops-watchtower#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gowrav-M/agentops-watchtower.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Gowrav-M/agentops-watchtower/issues"
+  },
   "bin": {
     "agentops-watchtower": "dist/cli.js"
   },
@@ -10,6 +18,8 @@
     "dist",
     "examples",
     "docs",
+    "!docs/assets/agentops-watchtower-repository-pitch.mp4",
+    "!docs/assets/agentops-watchtower-pitch-poster.png",
     "action.yml",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
