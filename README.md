@@ -623,6 +623,7 @@ See [docs/research.md](docs/research.md) and [docs/industry-positioning.md](docs
 ## Contributing And Security
 
 - Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Security policy: [SECURITY.md](SECURITY.md)
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - Threat model: [docs/threat-model.md](docs/threat-model.md)

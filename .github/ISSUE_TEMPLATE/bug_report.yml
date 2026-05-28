@@ -1,0 +1,44 @@
+name: Bug Report
+description: Report a Watchtower CLI, report, MCP, firewall, or GitHub Action problem.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please avoid posting real secrets, private traces, or proprietary MCP configs.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Include the smallest command, trace, descriptor, or config that reproduces the problem.
+      placeholder: |
+        1. Run `npx agentops-watchtower ...`
+        2. See error ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node version, OS, Watchtower version, and whether this was local CLI or GitHub Actions.
+      placeholder: |
+        Node:
+        OS:
+        agentops-watchtower:
+        Runtime: local CLI / GitHub Actions
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or artifact snippets
+      description: Paste relevant output after redacting secrets.
+      render: text
