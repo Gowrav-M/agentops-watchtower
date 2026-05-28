@@ -239,6 +239,34 @@ describe("cli", () => {
     expect(gate).toContain("\"mode\": \"blocked\"");
   });
 
+  it("proxy-mcp dry-run writes a proxy audit artifact for a selected stdio server", async () => {
+    const cwd = await makeTempDir();
+    const configPath = join(cwd, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          localDocs: {
+            command: process.execPath,
+            args: ["fake-server.mjs"]
+          }
+        }
+      }),
+      "utf8"
+    );
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(["node", "watchtower", "proxy-mcp", "--config", configPath, "--server", "localDocs", "--dry-run"], {
+      from: "node"
+    });
+
+    const audit = await readFile(join(cwd, ".watchtower", "reports", "mcp-proxy-audit.json"), "utf8");
+    expect(output.join("\n")).toContain("Proxy dry-run ready");
+    expect(audit).toContain("\"schemaVersion\": 1");
+    expect(audit).toContain("\"serverName\": \"localDocs\"");
+  });
+
   it("agent-bom writes JSON, Markdown, and CycloneDX inventory artifacts", async () => {
     const cwd = await makeTempDir();
     const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });

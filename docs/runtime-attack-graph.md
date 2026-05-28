@@ -59,6 +59,6 @@ Existing trace files stay valid. v0.7 adds optional fields to `tool_call` record
 
 ## Boundaries
 
-This is runtime risk-path inference, not a full taint-tracking VM and not a protocol proxy. Without explicit provenance from an agent runtime, Watchtower infers paths from ordered tool calls, tool names, arguments, status, MCP descriptor hints, and optional config context.
+This is runtime risk-path inference, not a full taint-tracking VM. Without explicit provenance from an agent runtime, Watchtower infers paths from ordered tool calls, tool names, arguments, status, MCP descriptor hints, and optional config context.
 
-The next layer is wrapper/proxy mode, where Watchtower can observe or block tool calls before execution.
+For prevention, use `proxy-mcp`. The proxy applies the same runtime chain analysis before forwarding stdio MCP `tools/call` requests.

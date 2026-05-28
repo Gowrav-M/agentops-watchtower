@@ -65,6 +65,7 @@ agentops-watchtower diff-mcp examples/mcp/safe-tools.json
 agentops-watchtower inventory-mcp
 agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
 agentops-watchtower gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json
+agentops-watchtower proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run
 agentops-watchtower agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --cyclonedx
 agentops-watchtower attest-mcp --subject safe-docs --private-key private.pem --key-id local-reviewer
 agentops-watchtower verify-attestation --public-key public.pem
@@ -88,6 +89,7 @@ agentops-watchtower doctor
 | `inventory-mcp [configs...]` | Inventories local MCP client configs and flags risky launch settings. |
 | `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
 | `gate-mcp` | Preflights one configured MCP server and blocks unsafe launch plans. |
+| `proxy-mcp` | Runs a local stdio MCP server behind runtime policy enforcement and audit logging. |
 | `agent-bom` | Exports an Agent Bill of Materials for MCP configs, servers, tools, and findings. |
 | `attest-mcp` | Creates a tamper-evident local evidence bundle and can sign it with Ed25519. |
 | `verify-attestation` | Verifies evidence bundle integrity, artifact hashes, and optional signatures. |
@@ -108,6 +110,7 @@ agentops-watchtower doctor
 - MCP tool drift: added, removed, or changed descriptors after approval.
 - Risky local MCP config: dangerous shell launchers, hardcoded secrets, unpinned package runners, SSE, and plain remote HTTP.
 - Runtime attack paths: secret-like sources flowing to external sinks, untrusted content flowing to shell/destructive/external tools, repository context leaving the workspace, and blocked actions followed by alternate sinks.
+- Unsafe MCP calls before execution through the stdio runtime proxy.
 - Prompt-injection-like instructions in tool result summaries, `resultText`, or structured `result` values.
 - Failed agent steps and risky tool calls in imported traces.
 - Unredacted secret-looking arguments in tool call records.
@@ -123,6 +126,7 @@ npx agentops-watchtower diff-mcp examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower inventory-mcp --fail-on high
 npx agentops-watchtower admit-mcp --descriptor examples/mcp/risky-tools.json --config examples/mcp/sample-client-config.json --fail-on high
 npx agentops-watchtower gate-mcp --config examples/mcp/sample-client-config.json --server review-this-installer --fail-on high
+npx agentops-watchtower proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run --fail-on high
 npx agentops-watchtower agent-bom --config examples/mcp/sample-client-config.json --descriptor examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --fail-on high
 ```
@@ -221,9 +225,40 @@ The gate filters config findings to the selected server, adds descriptor and bas
 - `dry-run`: the gate passed or review was explicitly allowed.
 - `blocked`: the server was denied or needs review without `--allow-review`.
 
-v0.8 records the approved launch plan but does not execute arbitrary MCP server commands. Protocol proxy/wrapper execution is a later layer.
+`gate-mcp` records the approved launch plan but does not execute arbitrary MCP server commands. Use `proxy-mcp` when you want Watchtower to launch a local stdio server behind runtime policy enforcement.
 
 See [docs/mcp-gate.md](docs/mcp-gate.md).
+
+## MCP Runtime Proxy
+
+Block unsafe stdio MCP tool calls before the server executes them:
+
+```bash
+npx agentops-watchtower proxy-mcp \
+  --config .mcp.json \
+  --server github \
+  --descriptor mcp-tools.json
+```
+
+Use dry-run mode for CI preflight without launching the server:
+
+```bash
+npx agentops-watchtower proxy-mcp \
+  --config examples/mcp/stdio-client-config.json \
+  --server local-echo \
+  --dry-run
+```
+
+Watchtower writes:
+
+```text
+.watchtower/reports/mcp-gate.json
+.watchtower/reports/mcp-proxy-audit.json
+```
+
+The proxy intercepts MCP JSON-RPC `tools/call` messages, blocks direct destructive or command-execution tools under the default policy, and uses the runtime attack graph to stop chains such as `read_secret -> send_email` or prompt-injected web content followed by shell execution.
+
+See [docs/mcp-proxy.md](docs/mcp-proxy.md).
 
 ## Agent Bill of Materials
 
@@ -374,11 +409,12 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v1.1: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, GitHub Action support, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v1.2: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, stdio MCP runtime proxy enforcement, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, GitHub Action support, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.
-- MCP protocol proxy/wrapper mode.
+- Streamable HTTP MCP proxy mode.
+- Interactive approval prompts with signed approval evidence.
 - Richer GitHub Action PR summaries.
 - Browser-based local report viewer.
 

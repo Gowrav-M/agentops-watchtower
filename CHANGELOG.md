@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 - 2026-05-28
+
+- Added `proxy-mcp` for stdio MCP runtime policy enforcement.
+- Added runtime JSON-RPC blocking for destructive, command, and source-to-sink tool-call chains.
+- Added MCP proxy audit artifacts and evidence-bundle inclusion.
+- Added stdio proxy examples, docs, tests, and CI dry-run coverage.
+
 ## 1.1.0 - 2026-05-28
 
 - Added the root `action.yml` composite GitHub Action for CI adoption.

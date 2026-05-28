@@ -13,6 +13,7 @@ describe("GitHub Action metadata", () => {
     expect(action).toContain("agent-bom");
     expect(action).toContain("admit-mcp");
     expect(action).toContain("attest-mcp");
+    expect(action).toContain("proxy-mcp");
     expect(action).toContain("analyze-run");
     expect(action).toContain("report_args=(report");
     expect(action).toContain("watchtower-report.json");
@@ -32,9 +33,10 @@ describe("GitHub Action metadata", () => {
     const changelog = await readFile(join(import.meta.dirname, "..", "CHANGELOG.md"), "utf8");
     const roadmap = await readFile(join(import.meta.dirname, "..", "ROADMAP.md"), "utf8");
 
-    expect(changelog).toContain("## 1.1.0");
+    expect(changelog).toContain("## 1.2.0");
     expect(changelog).toContain("GitHub Action");
-    expect(roadmap).toContain("MCP protocol proxy");
+    expect(changelog).toContain("proxy-mcp");
+    expect(roadmap).toContain("Streamable HTTP MCP proxy");
     expect(roadmap).toContain("agent transcript adapters");
   });
 });

@@ -47,4 +47,4 @@ The command:
 - optionally compares against an approved baseline;
 - writes SARIF when requested.
 
-v0.8 records the approved launch plan but does not execute arbitrary server commands. That keeps the feature useful in CI and local reviews without becoming a process supervisor or MCP protocol proxy too early.
+`gate-mcp` records the approved launch plan but does not execute arbitrary server commands. Use `proxy-mcp` when you want Watchtower to launch a local stdio MCP server behind runtime policy enforcement.

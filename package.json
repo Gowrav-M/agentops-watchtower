@@ -1,6 +1,6 @@
 {
   "name": "agentops-watchtower",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.",
   "type": "module",
   "bin": {
@@ -55,7 +55,10 @@
     "signed-evidence",
     "ed25519",
     "github-action",
-    "ci"
+    "ci",
+    "mcp-proxy",
+    "mcp-firewall",
+    "runtime-policy"
   ],
   "author": "Gowrav M",
   "license": "MIT",

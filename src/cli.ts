@@ -22,6 +22,7 @@ import { importTraceFile } from "./core/importer.js";
 import { compareMcpBaseline, createMcpBaseline, readMcpBaselineFile } from "./core/mcpBaseline.js";
 import { createMcpGateReport } from "./core/mcpGate.js";
 import { discoverMcpConfigCandidates, explicitMcpConfigCandidates, inventoryMcpConfigFiles } from "./core/mcpInventory.js";
+import { createMcpProxyAuditReport, createMcpProxyState, runStdioMcpProxy } from "./core/mcpProxy.js";
 import { scanMcpDescriptorFile, type McpScanOptions } from "./core/mcpScanner.js";
 import { exportOtelSpans } from "./core/otelExporter.js";
 import { loadWatchtowerConfig, shouldFailForFindings, summarizePolicyFailure } from "./core/policy.js";
@@ -367,6 +368,97 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
         if (gate.launch.mode === "blocked") {
           throw new Error(`MCP gate blocked launch: ${gate.launch.reason}`);
         }
+      }
+    );
+
+  program
+    .command("proxy-mcp")
+    .requiredOption("-c, --config <config...>", "MCP client config file(s) containing the stdio server to proxy.")
+    .option("-s, --server <server>", "MCP server name or full inventory id to proxy. Required when the config has multiple servers.")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to use for gate checks and runtime policy context.")
+    .option("-b, --baseline <baseline>", "Optional Watchtower MCP baseline file for drift checks.")
+    .option("--allow-review", "Allow a review gate decision after human approval.")
+    .option("--fail-on <severity>", "Exit non-zero when proxy preflight findings meet this severity.")
+    .option("--dry-run", "Run the preflight gate and write an empty proxy audit without launching the server.")
+    .description("Run a local stdio MCP policy proxy that can block unsafe tool calls before execution.")
+    .action(
+      async (options: {
+        config: string[];
+        server?: string;
+        descriptor?: string;
+        baseline?: string;
+        allowReview?: boolean;
+        failOn?: string;
+        dryRun?: boolean;
+      }) => {
+        const paths = await ensureWatchtowerDirs(ctx.cwd);
+        const watchtowerConfig = await loadWatchtowerConfig(ctx.cwd);
+        const inventory = await inventoryMcpConfigFiles(
+          explicitMcpConfigCandidates(options.config.map((configPath) => resolve(ctx.cwd, configPath)))
+        );
+        await writeJsonFile(paths.mcpInventoryJson, inventory);
+
+        let descriptorFindings: RiskFinding[] | undefined;
+        let baselineFindings: RiskFinding[] | undefined;
+        let descriptorTools: Awaited<ReturnType<typeof scanMcpDescriptorFile>>["tools"] | undefined;
+        if (options.descriptor !== undefined) {
+          const descriptorPath = resolve(ctx.cwd, options.descriptor);
+          const descriptorScan = await scanMcpDescriptorFile(descriptorPath, watchtowerConfig.policy);
+          descriptorTools = descriptorScan.tools;
+          descriptorFindings = descriptorScan.findings;
+          await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), descriptorScan);
+
+          const baselinePath = options.baseline === undefined ? paths.mcpBaselineJson : resolve(ctx.cwd, options.baseline);
+          if (await fileExists(baselinePath)) {
+            const baseline = await readMcpBaselineFile(baselinePath);
+            const diff = compareMcpBaseline(baseline, descriptorScan.tools);
+            baselineFindings = diff.findings;
+            await writeJsonFile(paths.mcpBaselineDiffJson, diff);
+          }
+        } else if (options.baseline !== undefined) {
+          throw new Error("proxy-mcp requires --descriptor when --baseline is provided.");
+        }
+
+        const gate = createMcpGateReport({
+          inventory,
+          ...(options.server === undefined ? {} : { serverName: options.server }),
+          ...(descriptorFindings === undefined ? {} : { descriptorFindings }),
+          ...(baselineFindings === undefined ? {} : { baselineFindings }),
+          allowReview: options.allowReview === true
+        });
+        await writeJsonFile(paths.mcpGateJson, gate);
+
+        const failOn = parseSeverityOption(options.failOn) ?? watchtowerConfig.policy.failOn;
+        if (shouldFailForFindings(gate.admission.findings, failOn)) {
+          throw new Error(summarizePolicyFailure(gate.admission.findings, failOn));
+        }
+        if (gate.launch.mode === "blocked") {
+          throw new Error(`MCP proxy blocked launch: ${gate.launch.reason}`);
+        }
+        if (gate.server.transport !== "stdio" || gate.server.command === undefined) {
+          throw new Error("proxy-mcp currently only supports configured stdio MCP servers.");
+        }
+
+        if (options.dryRun === true) {
+          const state = createMcpProxyState({
+            serverName: gate.server.name,
+            ...(descriptorTools === undefined ? {} : { tools: descriptorTools }),
+            policy: watchtowerConfig.policy
+          });
+          await writeJsonFile(paths.mcpProxyAuditJson, createMcpProxyAuditReport(state));
+          ctx.stdout(`Proxy dry-run ready for ${gate.server.name}.`);
+          ctx.stdout(`Wrote ${paths.mcpProxyAuditJson}`);
+          return;
+        }
+
+        ctx.stderr(`Starting MCP proxy for ${gate.server.name}. Audit: ${paths.mcpProxyAuditJson}`);
+        await runStdioMcpProxy({
+          cwd: ctx.cwd,
+          server: gate.server,
+          ...(descriptorTools === undefined ? {} : { tools: descriptorTools }),
+          policy: watchtowerConfig.policy,
+          auditPath: paths.mcpProxyAuditJson
+        });
       }
     );
 
@@ -722,6 +814,7 @@ async function existingEvidenceArtifacts(paths: ReturnType<typeof getWatchtowerP
     { name: "mcp-scan", path: join(paths.reportsDir, "mcp-scan.json") },
     { name: "mcp-baseline-diff", path: paths.mcpBaselineDiffJson },
     { name: "mcp-gate", path: paths.mcpGateJson },
+    { name: "mcp-proxy-audit", path: paths.mcpProxyAuditJson },
     { name: "agent-bom", path: paths.agentBomJson },
     { name: "agent-bom-markdown", path: paths.agentBomMarkdown },
     { name: "agent-bom-cyclonedx", path: paths.agentBomCycloneDxJson },

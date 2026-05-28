@@ -22,6 +22,7 @@ export interface WatchtowerPaths {
   mcpInventoryJson: string;
   mcpAdmissionJson: string;
   mcpGateJson: string;
+  mcpProxyAuditJson: string;
   attackGraphJson: string;
   evidenceBundleJson: string;
 }
@@ -51,6 +52,7 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     mcpInventoryJson: join(reportsDir, "mcp-inventory.json"),
     mcpAdmissionJson: join(reportsDir, "mcp-admission.json"),
     mcpGateJson: join(reportsDir, "mcp-gate.json"),
+    mcpProxyAuditJson: join(reportsDir, "mcp-proxy-audit.json"),
     attackGraphJson: join(reportsDir, "attack-graph.json"),
     evidenceBundleJson: join(reportsDir, "evidence-bundle.json")
   };

@@ -39,6 +39,10 @@ inputs:
     description: Run MCP preflight gate when config and server are provided.
     required: false
     default: "false"
+  run-proxy-dry-run:
+    description: Run MCP proxy preflight in dry-run mode when config and server are provided.
+    required: false
+    default: "false"
   run-attack-graph:
     description: Run runtime attack graph when trace is provided.
     required: false
@@ -65,6 +69,9 @@ outputs:
   evidence-bundle:
     description: Evidence bundle JSON path.
     value: ${{ steps.paths.outputs.evidence-bundle }}
+  proxy-audit:
+    description: MCP proxy audit JSON path.
+    value: ${{ steps.paths.outputs.proxy-audit }}
 
 runs:
   using: composite
@@ -76,6 +83,7 @@ runs:
         echo "sarif=.watchtower/reports/watchtower.sarif" >> "$GITHUB_OUTPUT"
         echo "agent-bom=.watchtower/reports/agent-bom.json" >> "$GITHUB_OUTPUT"
         echo "evidence-bundle=.watchtower/reports/evidence-bundle.json" >> "$GITHUB_OUTPUT"
+        echo "proxy-audit=.watchtower/reports/mcp-proxy-audit.json" >> "$GITHUB_OUTPUT"
 
     - name: Run Watchtower checks
       shell: bash
@@ -89,6 +97,7 @@ runs:
         WATCHTOWER_RUN_AGENT_BOM: ${{ inputs.run-agent-bom }}
         WATCHTOWER_RUN_ADMISSION: ${{ inputs.run-admission }}
         WATCHTOWER_RUN_GATE: ${{ inputs.run-gate }}
+        WATCHTOWER_RUN_PROXY_DRY_RUN: ${{ inputs.run-proxy-dry-run }}
         WATCHTOWER_RUN_ATTACK_GRAPH: ${{ inputs.run-attack-graph }}
         WATCHTOWER_RUN_REPORT: ${{ inputs.run-report }}
         WATCHTOWER_RUN_ATTESTATION: ${{ inputs.run-attestation }}
@@ -143,6 +152,19 @@ runs:
           artifacts_created=true
         fi
 
+        if [[ "$WATCHTOWER_RUN_PROXY_DRY_RUN" == "true" ]]; then
+          if [[ -z "$WATCHTOWER_CONFIG" || -z "$WATCHTOWER_SERVER" ]]; then
+            echo "run-proxy-dry-run requires config and server inputs." >&2
+            exit 1
+          fi
+          if [[ -n "$WATCHTOWER_DESCRIPTOR" ]]; then
+            run_watchtower proxy-mcp --config "$WATCHTOWER_CONFIG" --server "$WATCHTOWER_SERVER" --descriptor "$WATCHTOWER_DESCRIPTOR" --dry-run --fail-on "$WATCHTOWER_FAIL_ON"
+          else
+            run_watchtower proxy-mcp --config "$WATCHTOWER_CONFIG" --server "$WATCHTOWER_SERVER" --dry-run --fail-on "$WATCHTOWER_FAIL_ON"
+          fi
+          artifacts_created=true
+        fi
+
         if [[ "$WATCHTOWER_RUN_ATTACK_GRAPH" == "true" && -n "$WATCHTOWER_TRACE" ]]; then
           run_watchtower analyze-run --trace "$WATCHTOWER_TRACE" --sarif --fail-on "$WATCHTOWER_FAIL_ON"
           artifacts_created=true
@@ -177,5 +199,6 @@ runs:
           echo "- Report path: .watchtower/reports/watchtower-report.json"
           echo "- SARIF path: .watchtower/reports/watchtower.sarif"
           echo "- AgentBOM path: .watchtower/reports/agent-bom.json"
+          echo "- MCP proxy audit path: .watchtower/reports/mcp-proxy-audit.json"
           echo "- Evidence bundle path: .watchtower/reports/evidence-bundle.json"
         } >> "$GITHUB_STEP_SUMMARY"
