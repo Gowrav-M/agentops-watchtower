@@ -1,0 +1,24 @@
+<svg width="920" height="390" viewBox="0 0 920 390" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AgentOps Watchtower terminal demo</title>
+  <desc id="desc">A terminal preview showing setup, check, and protect commands producing local reports, firewall policy, and protected MCP config artifacts.</desc>
+  <rect width="920" height="390" rx="14" fill="#0B1020"/>
+  <rect x="1" y="1" width="918" height="388" rx="13" stroke="#334155"/>
+  <rect x="0" y="0" width="920" height="44" rx="14" fill="#111827"/>
+  <circle cx="24" cy="22" r="6" fill="#EF4444"/>
+  <circle cx="44" cy="22" r="6" fill="#F59E0B"/>
+  <circle cx="64" cy="22" r="6" fill="#22C55E"/>
+  <text x="86" y="27" fill="#CBD5E1" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">AgentOps Watchtower local demo</text>
+
+  <text x="30" y="78" fill="#38BDF8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">$ npx agentops-watchtower setup</text>
+  <text x="30" y="108" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">Setup complete. Created .watchtower/config.json</text>
+  <text x="30" y="132" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">Wrote firewall policy to .watchtower/firewall.json</text>
+  <text x="30" y="156" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">Wrote 3 slash-command templates to .watchtower/slash-commands</text>
+
+  <text x="30" y="202" fill="#38BDF8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">$ npx agentops-watchtower check --trace agent-run.jsonl --firewall .watchtower/firewall.json</text>
+  <text x="30" y="232" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">Watchtower check complete. Risk score: 80. Findings: 4.</text>
+  <text x="30" y="256" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">Reports: .watchtower/reports/watchtower-report.md and watchtower-report.html</text>
+  <text x="30" y="280" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">Advanced artifacts: mcp-scan.json, attack-graph.json, firewall-report.json, SARIF</text>
+
+  <text x="30" y="326" fill="#38BDF8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">$ npx agentops-watchtower protect --config .mcp.json --server github</text>
+  <text x="30" y="356" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">Protected config written. Advanced equivalent: protect-mcp with the same flags.</text>
+</svg>

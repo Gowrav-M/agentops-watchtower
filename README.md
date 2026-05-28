@@ -5,18 +5,38 @@
 [![License MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Local first](https://img.shields.io/badge/local--first-no%20cloud%20required-111827)](#quick-start)
 [![MCP security](https://img.shields.io/badge/MCP-security%20%2B%20runtime%20policy-orange)](#capability-firewall)
+[![GitHub Action](https://img.shields.io/badge/GitHub%20Action-ready-2563EB)](#github-action)
 
-Local-first black box recorder, MCP safety scanner, runtime Capability Firewall, and evidence generator for AI agent workflows.
+Black box recorder and firewall for AI coding agents.
 
-<p align="center">
-  <img src="docs/assets/watchtower-pipeline.svg" alt="AgentOps Watchtower pipeline: agent traces and MCP configs flow through local scanners, capability firewall, reports, SARIF, OTel, and signed evidence." width="920">
-</p>
+Run one command to see what an agent did, which MCP tools were risky, which runtime chains looked unsafe, and what evidence you can attach before trusting the workflow.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/watchtower-demo-terminal.svg" alt="Terminal demo showing Watchtower setup, check, and protect commands." /></td>
+    <td width="50%"><img src="docs/assets/watchtower-report-preview.svg" alt="Watchtower report preview with risk score, runtime attack path, firewall decisions, and evidence exports." /></td>
+  </tr>
+</table>
 
 AgentOps Watchtower is for developers using Codex, Claude Code, Cursor, OpenCode, OpenClaw, Hermes Agent, Gemini CLI, and MCP servers who need to answer one operational question:
 
 > What did the agent do, which tools were risky, and what proof can I attach before this workflow is trusted?
 
 It is not another agent framework. It is the safety and evidence layer around agent runs: import traces, inspect MCP tool surfaces, generate least-privilege firewall policies, detect runtime attack paths, protect MCP configs, block unsafe stdio tool calls, and generate reproducible Markdown, HTML, JSON, SARIF, OTel-style, AgentBOM, and signed evidence artifacts.
+
+## See It In 30 Seconds
+
+```bash
+npx agentops-watchtower setup
+npx agentops-watchtower check
+npx agentops-watchtower protect --config .mcp.json --server github
+```
+
+This writes local-only artifacts under `.watchtower/`: reports, attack graph, MCP scan, firewall policy, slash-command templates, protected MCP config, SARIF, OTel-style spans, AgentBOM, and signed evidence when requested.
+
+<p align="center">
+  <img src="docs/assets/watchtower-pipeline.svg" alt="AgentOps Watchtower pipeline: agent traces and MCP configs flow through local scanners, capability firewall, reports, SARIF, OTel, and signed evidence." width="920">
+</p>
 
 ## At A Glance
 
@@ -27,6 +47,14 @@ It is not another agent framework. It is the safety and evidence layer around ag
 | Safe-looking tools can become unsafe when chained at runtime. | Build attack graphs from traces and block risky stdio MCP calls before execution. |
 | Teams need least-privilege control, not prompt-only promises. | Generate and simulate a local Capability Firewall policy, then enforce it through `proxy-mcp`. |
 | Security review needs proof, not screenshots. | Produce AgentBOM, OTel-style spans, reports, and signed evidence bundles. |
+
+## Why Star This
+
+- Works with the agent stack people are already using: Codex, Claude Code, Cursor, OpenCode, Hermes Agent, Gemini CLI, and MCP servers.
+- Local-first by default: no paid API, no cloud account, no trace data leaving the workstation.
+- Practical security surface: MCP descriptor scan, config inventory, baseline drift, runtime attack graph, and Capability Firewall.
+- Evidence-first output: Markdown, HTML, JSON, SARIF, OTel-style spans, AgentBOM, CycloneDX, and signed evidence bundles.
+- Simple entrypoint with advanced controls still exposed: `setup`, `check`, `protect`, plus the full power-user CLI.
 
 ## Why Now
 
@@ -590,6 +618,7 @@ See [docs/research.md](docs/research.md) and [docs/industry-positioning.md](docs
 | Evidence bundles | [docs/evidence-bundles.md](docs/evidence-bundles.md) |
 | GitHub Action | [docs/github-action.md](docs/github-action.md) |
 | Research and positioning | [docs/research.md](docs/research.md), [docs/industry-positioning.md](docs/industry-positioning.md) |
+| Launch and distribution | [docs/launch.md](docs/launch.md) |
 
 ## Contributing And Security
 

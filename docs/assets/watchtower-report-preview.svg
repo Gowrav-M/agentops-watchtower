@@ -1,0 +1,46 @@
+<svg width="920" height="520" viewBox="0 0 920 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AgentOps Watchtower report preview</title>
+  <desc id="desc">A report preview showing risk score, MCP findings, runtime attack path, capability firewall decisions, and evidence exports.</desc>
+  <rect width="920" height="520" rx="18" fill="#F8FAFC"/>
+  <rect x="1" y="1" width="918" height="518" rx="17" stroke="#CBD5E1"/>
+  <text x="34" y="52" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="30">AgentOps Watchtower Report</text>
+  <text x="34" y="82" fill="#475569" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16">Black box recorder + MCP safety scanner + runtime firewall evidence</text>
+
+  <rect x="34" y="118" width="196" height="126" rx="12" fill="#0F172A"/>
+  <text x="56" y="154" fill="#CBD5E1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">Risk score</text>
+  <text x="56" y="209" fill="#F97316" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="800" font-size="54">80</text>
+
+  <rect x="252" y="118" width="196" height="126" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="274" y="154" fill="#64748B" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">Tool calls</text>
+  <text x="274" y="209" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="800" font-size="54">3</text>
+
+  <rect x="470" y="118" width="196" height="126" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="492" y="154" fill="#64748B" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">Findings</text>
+  <text x="492" y="209" fill="#DC2626" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="800" font-size="54">4</text>
+
+  <rect x="688" y="118" width="198" height="126" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="710" y="154" fill="#64748B" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">Exports</text>
+  <text x="710" y="186" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="17">Markdown, HTML</text>
+  <text x="710" y="214" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="17">JSON, SARIF, OTel</text>
+
+  <rect x="34" y="274" width="414" height="194" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="56" y="312" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="20">Runtime attack path</text>
+  <circle cx="76" cy="352" r="10" fill="#F97316"/>
+  <text x="100" y="358" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16">blocked shell_exec</text>
+  <line x1="76" y1="370" x2="76" y2="405" stroke="#CBD5E1" stroke-width="3"/>
+  <circle cx="76" cy="425" r="10" fill="#DC2626"/>
+  <text x="100" y="431" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16">alternate external sink</text>
+  <text x="56" y="454" fill="#64748B" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14">Finding: runtime.blocked_action_bypass</text>
+
+  <rect x="470" y="274" width="416" height="194" rx="14" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="492" y="312" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="20">Capability Firewall</text>
+  <rect x="492" y="336" width="104" height="34" rx="17" fill="#DCFCE7"/>
+  <text x="522" y="358" fill="#166534" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="14">ALLOW</text>
+  <text x="612" y="358" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="15">list_projects</text>
+  <rect x="492" y="382" width="104" height="34" rx="17" fill="#FEE2E2"/>
+  <text x="528" y="404" fill="#991B1B" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="14">DENY</text>
+  <text x="612" y="404" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="15">shell_exec rm -rf</text>
+  <rect x="492" y="428" width="104" height="34" rx="17" fill="#FEF3C7"/>
+  <text x="510" y="450" fill="#92400E" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="14">REVIEW</text>
+  <text x="612" y="450" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="15">external send</text>
+</svg>

@@ -7,6 +7,9 @@ describe("GitHub Action metadata", () => {
     const action = await readFile(join(import.meta.dirname, "..", "action.yml"), "utf8");
 
     expect(action).toContain("name: AgentOps Watchtower");
+    expect(action).toContain("branding:");
+    expect(action).toContain("icon: shield");
+    expect(action).toContain("color: orange");
     expect(action).toContain("using: composite");
     expect(action).toContain("descriptor:");
     expect(action).toContain("config:");
