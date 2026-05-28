@@ -986,19 +986,21 @@ async function runCombinedCheck(ctx: CliContext, options: CombinedCheckOptions):
   const artifacts: string[] = [];
   const descriptor = options.descriptor ?? options.mcp;
   const descriptorPath = descriptor === undefined ? undefined : resolve(ctx.cwd, descriptor);
+  let descriptorScan: Awaited<ReturnType<typeof scanMcpDescriptorFile>> | undefined;
+  let inventory: Awaited<ReturnType<typeof inventoryMcpConfigFiles>> | undefined;
   let mcpFindings: RiskFinding[] = [];
   let inventoryFindings: RiskFinding[] = [];
   let firewallFindings: RiskFinding[] = [];
 
   if (descriptorPath !== undefined) {
-    const descriptorScan = await scanMcpDescriptorFile(descriptorPath, config.policy);
+    descriptorScan = await scanMcpDescriptorFile(descriptorPath, config.policy);
     await writeJsonFile(join(paths.reportsDir, "mcp-scan.json"), descriptorScan);
     mcpFindings = descriptorScan.findings;
     artifacts.push(join(paths.reportsDir, "mcp-scan.json"));
   }
 
   if (options.config !== undefined && options.config.length > 0) {
-    const inventory = await inventoryMcpConfigFiles(
+    inventory = await inventoryMcpConfigFiles(
       explicitMcpConfigCandidates(options.config.map((configPath) => resolve(ctx.cwd, configPath)))
     );
     await writeJsonFile(paths.mcpInventoryJson, inventory);
@@ -1006,10 +1008,10 @@ async function runCombinedCheck(ctx: CliContext, options: CombinedCheckOptions):
     artifacts.push(paths.mcpInventoryJson);
   }
 
-  const graph = analyzeRuns(
-    runs,
-    await loadAttackGraphContext(ctx.cwd, paths, descriptorPath, options.config, config.policy)
-  );
+  const graph = analyzeRuns(runs, {
+    ...(descriptorScan === undefined ? {} : { tools: descriptorScan.tools }),
+    ...(inventory === undefined ? {} : { inventory })
+  });
   await writeJsonFile(paths.attackGraphJson, graph);
   artifacts.push(paths.attackGraphJson);
 
