@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,6 +39,14 @@ export interface CliContext {
 const currentFile = fileURLToPath(import.meta.url);
 const packageRoot = resolve(dirname(currentFile), "..");
 
+function readPackageVersion(): string {
+  const packageJson = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")) as { version?: unknown };
+  if (typeof packageJson.version !== "string") {
+    throw new Error("package.json version is missing.");
+  }
+  return packageJson.version;
+}
+
 export function buildCli(context: Partial<CliContext> = {}): Command {
   const ctx: CliContext = {
     cwd: context.cwd ?? process.cwd(),
@@ -49,7 +58,7 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
   program
     .name("agentops-watchtower")
     .description("Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.")
-    .version("1.0.0");
+    .version(readPackageVersion());
 
   program
     .command("init")

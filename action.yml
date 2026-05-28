@@ -1,0 +1,181 @@
+name: AgentOps Watchtower
+description: Run local-first AgentOps Watchtower checks in GitHub Actions.
+author: Gowrav M
+
+inputs:
+  descriptor:
+    description: MCP descriptor JSON path.
+    required: false
+    default: ""
+  config:
+    description: MCP client config path.
+    required: false
+    default: ""
+  trace:
+    description: Agent trace JSONL/Markdown path for runtime attack graph analysis.
+    required: false
+    default: ""
+  server:
+    description: MCP server name or inventory id for gate-mcp.
+    required: false
+    default: ""
+  fail-on:
+    description: Severity threshold that fails the workflow.
+    required: false
+    default: high
+  package-version:
+    description: npm version of agentops-watchtower to run.
+    required: false
+    default: latest
+  run-agent-bom:
+    description: Generate AgentBOM when config is provided.
+    required: false
+    default: "true"
+  run-admission:
+    description: Run MCP admission when config and descriptor are provided.
+    required: false
+    default: "true"
+  run-gate:
+    description: Run MCP preflight gate when config and server are provided.
+    required: false
+    default: "false"
+  run-attack-graph:
+    description: Run runtime attack graph when trace is provided.
+    required: false
+    default: "true"
+  run-report:
+    description: Generate Markdown, HTML, and JSON Watchtower reports.
+    required: false
+    default: "true"
+  run-attestation:
+    description: Generate a tamper-evident evidence bundle from produced artifacts.
+    required: false
+    default: "true"
+
+outputs:
+  report-json:
+    description: Watchtower report JSON path.
+    value: ${{ steps.paths.outputs.report-json }}
+  sarif:
+    description: Watchtower SARIF path.
+    value: ${{ steps.paths.outputs.sarif }}
+  agent-bom:
+    description: AgentBOM JSON path.
+    value: ${{ steps.paths.outputs.agent-bom }}
+  evidence-bundle:
+    description: Evidence bundle JSON path.
+    value: ${{ steps.paths.outputs.evidence-bundle }}
+
+runs:
+  using: composite
+  steps:
+    - id: paths
+      shell: bash
+      run: |
+        echo "report-json=.watchtower/reports/watchtower-report.json" >> "$GITHUB_OUTPUT"
+        echo "sarif=.watchtower/reports/watchtower.sarif" >> "$GITHUB_OUTPUT"
+        echo "agent-bom=.watchtower/reports/agent-bom.json" >> "$GITHUB_OUTPUT"
+        echo "evidence-bundle=.watchtower/reports/evidence-bundle.json" >> "$GITHUB_OUTPUT"
+
+    - name: Run Watchtower checks
+      shell: bash
+      env:
+        WATCHTOWER_DESCRIPTOR: ${{ inputs.descriptor }}
+        WATCHTOWER_CONFIG: ${{ inputs.config }}
+        WATCHTOWER_TRACE: ${{ inputs.trace }}
+        WATCHTOWER_SERVER: ${{ inputs.server }}
+        WATCHTOWER_FAIL_ON: ${{ inputs.fail-on }}
+        WATCHTOWER_PACKAGE_VERSION: ${{ inputs.package-version }}
+        WATCHTOWER_RUN_AGENT_BOM: ${{ inputs.run-agent-bom }}
+        WATCHTOWER_RUN_ADMISSION: ${{ inputs.run-admission }}
+        WATCHTOWER_RUN_GATE: ${{ inputs.run-gate }}
+        WATCHTOWER_RUN_ATTACK_GRAPH: ${{ inputs.run-attack-graph }}
+        WATCHTOWER_RUN_REPORT: ${{ inputs.run-report }}
+        WATCHTOWER_RUN_ATTESTATION: ${{ inputs.run-attestation }}
+      run: |
+        set -euo pipefail
+
+        package_spec="agentops-watchtower"
+        if [[ "$WATCHTOWER_PACKAGE_VERSION" != "latest" ]]; then
+          package_spec="agentops-watchtower@$WATCHTOWER_PACKAGE_VERSION"
+        fi
+
+        run_watchtower() {
+          npx -y "$package_spec" "$@"
+        }
+
+        artifacts_created=false
+
+        if [[ -n "$WATCHTOWER_DESCRIPTOR" ]]; then
+          run_watchtower scan-mcp "$WATCHTOWER_DESCRIPTOR" --sarif --fail-on "$WATCHTOWER_FAIL_ON"
+          artifacts_created=true
+        fi
+
+        if [[ -n "$WATCHTOWER_CONFIG" ]]; then
+          run_watchtower inventory-mcp "$WATCHTOWER_CONFIG" --fail-on "$WATCHTOWER_FAIL_ON"
+          artifacts_created=true
+        fi
+
+        if [[ "$WATCHTOWER_RUN_AGENT_BOM" == "true" && -n "$WATCHTOWER_CONFIG" ]]; then
+          if [[ -n "$WATCHTOWER_DESCRIPTOR" ]]; then
+            run_watchtower agent-bom --config "$WATCHTOWER_CONFIG" --descriptor "$WATCHTOWER_DESCRIPTOR" --cyclonedx --fail-on "$WATCHTOWER_FAIL_ON"
+          else
+            run_watchtower agent-bom --config "$WATCHTOWER_CONFIG" --cyclonedx --fail-on "$WATCHTOWER_FAIL_ON"
+          fi
+          artifacts_created=true
+        fi
+
+        if [[ "$WATCHTOWER_RUN_ADMISSION" == "true" && -n "$WATCHTOWER_CONFIG" && -n "$WATCHTOWER_DESCRIPTOR" ]]; then
+          run_watchtower admit-mcp --descriptor "$WATCHTOWER_DESCRIPTOR" --config "$WATCHTOWER_CONFIG" --sarif --fail-on "$WATCHTOWER_FAIL_ON"
+          artifacts_created=true
+        fi
+
+        if [[ "$WATCHTOWER_RUN_GATE" == "true" ]]; then
+          if [[ -z "$WATCHTOWER_CONFIG" || -z "$WATCHTOWER_SERVER" ]]; then
+            echo "run-gate requires config and server inputs." >&2
+            exit 1
+          fi
+          if [[ -n "$WATCHTOWER_DESCRIPTOR" ]]; then
+            run_watchtower gate-mcp --config "$WATCHTOWER_CONFIG" --server "$WATCHTOWER_SERVER" --descriptor "$WATCHTOWER_DESCRIPTOR" --sarif --fail-on "$WATCHTOWER_FAIL_ON"
+          else
+            run_watchtower gate-mcp --config "$WATCHTOWER_CONFIG" --server "$WATCHTOWER_SERVER" --sarif --fail-on "$WATCHTOWER_FAIL_ON"
+          fi
+          artifacts_created=true
+        fi
+
+        if [[ "$WATCHTOWER_RUN_ATTACK_GRAPH" == "true" && -n "$WATCHTOWER_TRACE" ]]; then
+          run_watchtower analyze-run --trace "$WATCHTOWER_TRACE" --sarif --fail-on "$WATCHTOWER_FAIL_ON"
+          artifacts_created=true
+        fi
+
+        if [[ "$WATCHTOWER_RUN_REPORT" == "true" ]]; then
+          report_args=(report --fail-on "$WATCHTOWER_FAIL_ON")
+          if [[ -n "$WATCHTOWER_DESCRIPTOR" ]]; then
+            report_args+=("--mcp" "$WATCHTOWER_DESCRIPTOR")
+          fi
+          if [[ -n "$WATCHTOWER_TRACE" ]]; then
+            report_args+=("--trace" "$WATCHTOWER_TRACE")
+          fi
+          if [[ "$WATCHTOWER_RUN_ATTACK_GRAPH" == "true" && -n "$WATCHTOWER_TRACE" ]]; then
+            report_args+=("--analyze")
+          fi
+          run_watchtower "${report_args[@]}"
+          artifacts_created=true
+        fi
+
+        if [[ "$WATCHTOWER_RUN_ATTESTATION" == "true" && "$artifacts_created" == "true" ]]; then
+          run_watchtower attest-mcp --subject "github-actions:${GITHUB_REPOSITORY:-local}"
+        fi
+
+        {
+          echo "## AgentOps Watchtower"
+          echo ""
+          echo "- Descriptor: ${WATCHTOWER_DESCRIPTOR:-not provided}"
+          echo "- Config: ${WATCHTOWER_CONFIG:-not provided}"
+          echo "- Trace: ${WATCHTOWER_TRACE:-not provided}"
+          echo "- Fail-on: $WATCHTOWER_FAIL_ON"
+          echo "- Report path: .watchtower/reports/watchtower-report.json"
+          echo "- SARIF path: .watchtower/reports/watchtower.sarif"
+          echo "- AgentBOM path: .watchtower/reports/agent-bom.json"
+          echo "- Evidence bundle path: .watchtower/reports/evidence-bundle.json"
+        } >> "$GITHUB_STEP_SUMMARY"

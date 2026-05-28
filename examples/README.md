@@ -35,3 +35,4 @@ npm run dev -- export-otel
 ## GitHub
 
 - `github/watchtower-code-scanning.yml`: example workflow for uploading Watchtower SARIF to GitHub Code Scanning.
+- `github/watchtower-action.yml`: example workflow using the packaged Watchtower GitHub Action.

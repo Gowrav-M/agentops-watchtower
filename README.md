@@ -22,6 +22,16 @@ npm run build
 node dist/cli.js demo
 ```
 
+GitHub Actions:
+
+```yaml
+- uses: Gowrav-M/agentops-watchtower@v1
+  with:
+    descriptor: examples/mcp/safe-tools.json
+    config: examples/mcp/safe-client-config.json
+    fail-on: high
+```
+
 The demo writes local files under `.watchtower/`:
 
 - `.watchtower/runs/runs.jsonl`
@@ -292,6 +302,23 @@ Output:
 
 See [docs/sarif.md](docs/sarif.md) and [examples/github/watchtower-code-scanning.yml](examples/github/watchtower-code-scanning.yml).
 
+## GitHub Action
+
+Use Watchtower directly in CI:
+
+```yaml
+- name: Run Watchtower
+  uses: Gowrav-M/agentops-watchtower@v1
+  with:
+    descriptor: examples/mcp/safe-tools.json
+    config: examples/mcp/safe-client-config.json
+    fail-on: high
+    run-agent-bom: "true"
+    run-admission: "true"
+```
+
+See [docs/github-action.md](docs/github-action.md) and [examples/github/watchtower-action.yml](examples/github/watchtower-action.yml).
+
 ## OpenTelemetry Export
 
 ```bash
@@ -347,12 +374,12 @@ node dist/cli.js demo
 
 ## Project Status
 
-This is v1.0: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v1.1: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, GitHub Action support, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.
 - MCP protocol proxy/wrapper mode.
-- GitHub Action summary comments and packaged action.
+- Richer GitHub Action PR summaries.
 - Browser-based local report viewer.
 
 ## License
