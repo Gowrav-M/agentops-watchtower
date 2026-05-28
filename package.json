@@ -4,7 +4,7 @@
   "description": "Local-first black box recorder, MCP safety scanner, runtime Capability Firewall, and evidence generator for AI agent workflows.",
   "type": "module",
   "bin": {
-    "agentops-watchtower": "./dist/cli.js"
+    "agentops-watchtower": "dist/cli.js"
   },
   "files": [
     "dist",

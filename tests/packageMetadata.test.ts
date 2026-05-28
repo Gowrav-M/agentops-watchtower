@@ -15,7 +15,7 @@ describe("package metadata", () => {
     const raw = await readFile(join(import.meta.dirname, "..", "package.json"), "utf8");
     const packageJson = PackageJsonSchema.parse(JSON.parse(raw) as unknown);
 
-    expect(packageJson.bin["agentops-watchtower"]).toBe("./dist/cli.js");
+    expect(packageJson.bin["agentops-watchtower"]).toBe("dist/cli.js");
     expect(packageJson.scripts["prepack"]).toBe("npm run build");
     expect(packageJson.scripts["prepare"]).toBe("npm run build");
   });
