@@ -18,6 +18,16 @@ AgentOps Watchtower is for developers using Codex, Claude Code, Cursor, OpenCode
 
 It is not another agent framework. It is the safety and evidence layer around agent runs: import traces, inspect MCP tool surfaces, generate least-privilege firewall policies, detect runtime attack paths, protect MCP configs, block unsafe stdio tool calls, and generate reproducible Markdown, HTML, JSON, SARIF, OTel-style, AgentBOM, and signed evidence artifacts.
 
+## At A Glance
+
+| Problem | Watchtower answer |
+| --- | --- |
+| Agent tools touch local files, shells, browsers, APIs, and secrets. | Record runs locally and redact sensitive data before reports are written. |
+| MCP descriptors can hide risky or poisoned tool behavior. | Scan descriptors, baseline approved tool surfaces, and export SARIF. |
+| Safe-looking tools can become unsafe when chained at runtime. | Build attack graphs from traces and block risky stdio MCP calls before execution. |
+| Teams need least-privilege control, not prompt-only promises. | Generate and simulate a local Capability Firewall policy, then enforce it through `proxy-mcp`. |
+| Security review needs proof, not screenshots. | Produce AgentBOM, OTel-style spans, reports, and signed evidence bundles. |
+
 ## Why Now
 
 Agent systems are moving from demos into developer workstations and CI. The new failure mode is not only "bad answer"; it is an agent chaining tools with local files, browser sessions, secrets, package runners, and external APIs.
@@ -34,7 +44,9 @@ Current industry guidance points in the same direction:
 
 ## Quick Start
 
-Run the full local demo:
+Pick the path that matches what you want to prove.
+
+### 1. Run The Demo
 
 ```bash
 npx agentops-watchtower demo
@@ -47,7 +59,14 @@ Demo complete. Risk score: 100.
 Open .watchtower/reports/watchtower-report.md or .watchtower/reports/watchtower-report.html.
 ```
 
-Protect one MCP server behind the runtime proxy without hand-editing JSON:
+### 2. Scan An MCP Server
+
+```bash
+npx agentops-watchtower scan-mcp examples/mcp/risky-tools.json --sarif
+npx agentops-watchtower report --mcp examples/mcp/risky-tools.json --analyze
+```
+
+### 3. Install Least-Privilege Runtime Policy
 
 ```bash
 npx agentops-watchtower firewall init --descriptor mcp-tools.json
@@ -121,32 +140,24 @@ npm run build
 node dist/cli.js demo
 ```
 
-## CLI
+## Common Workflows
 
-```bash
-agentops-watchtower init
-agentops-watchtower import examples/traces/codex-session.jsonl
-agentops-watchtower scan-mcp examples/mcp/risky-tools.json
-agentops-watchtower scan-mcp examples/mcp/risky-tools.json --sarif
-agentops-watchtower baseline-mcp examples/mcp/safe-tools.json
-agentops-watchtower diff-mcp examples/mcp/safe-tools.json
-agentops-watchtower inventory-mcp
-agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
-agentops-watchtower gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json
-agentops-watchtower firewall init --descriptor examples/mcp/risky-tools.json
-agentops-watchtower firewall simulate --config examples/firewall/least-privilege.json --trace examples/traces/firewall-violation.jsonl
-agentops-watchtower proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run
-agentops-watchtower protect-mcp --config examples/mcp/stdio-client-config.json --server local-echo --firewall examples/firewall/least-privilege.json
-agentops-watchtower unprotect-mcp --config .mcp.json
-agentops-watchtower agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --cyclonedx
-agentops-watchtower attest-mcp --subject safe-docs --private-key private.pem --key-id local-reviewer
-agentops-watchtower verify-attestation --public-key public.pem
-agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --sarif
-agentops-watchtower eval
-agentops-watchtower report --mcp examples/mcp/risky-tools.json --analyze
-agentops-watchtower export-otel
-agentops-watchtower doctor
-```
+| Workflow | Commands |
+| --- | --- |
+| Try the product | `agentops-watchtower demo` |
+| Scan risky MCP descriptors | `agentops-watchtower scan-mcp examples/mcp/risky-tools.json --sarif` |
+| Approve and detect descriptor drift | `baseline-mcp`, then `diff-mcp` |
+| Inspect installed MCP client config | `agentops-watchtower inventory-mcp` |
+| Make an allow/review/deny decision | `agentops-watchtower admit-mcp --descriptor mcp-tools.json --config .mcp.json` |
+| Preflight one server before launch | `agentops-watchtower gate-mcp --config .mcp.json --server github --descriptor mcp-tools.json` |
+| Create and test least-privilege policy | `firewall init`, then `firewall simulate` |
+| Enforce runtime policy | `proxy-mcp --firewall .watchtower/firewall.json` |
+| Wrap a real MCP client config | `protect-mcp --firewall .watchtower/firewall.json` |
+| Explain a completed agent run | `analyze-run --trace trace.jsonl --sarif` |
+| Export governance evidence | `agent-bom --cyclonedx`, then `attest-mcp` |
+| Export observability data | `export-otel` |
+
+See [examples/README.md](examples/README.md) for copy-paste runnable commands.
 
 ### Commands
 
@@ -299,7 +310,7 @@ Watchtower writes:
 .watchtower/reports/mcp-gate.json
 ```
 
-The gate filters config findings to the selected server, adds descriptor and baseline findings when provided, then creates a launch plan:
+The gate filters config findings to the selected server, adds descriptor and baseline findings when you pass them, then creates a launch plan:
 
 - `dry-run`: the gate passed or review was explicitly allowed.
 - `blocked`: the server was denied or needs review without `--allow-review`.
@@ -372,7 +383,7 @@ Watchtower writes:
 ```
 
 The proxy intercepts MCP JSON-RPC `tools/call` messages, blocks direct destructive or command-execution tools under the default policy, and uses the runtime attack graph to stop chains such as `read_secret -> send_email` or prompt-injected web content followed by shell execution.
-When `--firewall` is provided, explicit Capability Firewall policy rules run first and can allow, deny, or require approval per tool call.
+When you supply `--firewall`, explicit Capability Firewall policy rules run first and can allow, deny, or require approval per tool call.
 
 See [docs/mcp-proxy.md](docs/mcp-proxy.md).
 
@@ -539,6 +550,19 @@ AgentOps Watchtower focuses on the useful middle ground:
 - easy to run in CI or locally.
 
 See [docs/research.md](docs/research.md) and [docs/industry-positioning.md](docs/industry-positioning.md) for the research notes and repository signal.
+
+## Docs Map
+
+| Need | Start here |
+| --- | --- |
+| Architecture and data flow | [docs/architecture.md](docs/architecture.md) |
+| Capability Firewall | [docs/firewall.md](docs/firewall.md) |
+| Runtime proxy | [docs/mcp-proxy.md](docs/mcp-proxy.md) |
+| MCP protect mode | [docs/mcp-protect.md](docs/mcp-protect.md) |
+| Runtime attack graph | [docs/runtime-attack-graph.md](docs/runtime-attack-graph.md) |
+| Evidence bundles | [docs/evidence-bundles.md](docs/evidence-bundles.md) |
+| GitHub Action | [docs/github-action.md](docs/github-action.md) |
+| Research and positioning | [docs/research.md](docs/research.md), [docs/industry-positioning.md](docs/industry-positioning.md) |
 
 ## Contributing And Security
 
