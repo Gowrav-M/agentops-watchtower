@@ -1,0 +1,39 @@
+name: Feature Request
+description: Suggest an AgentOps, MCP, firewall, evidence, or CI improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real workflow or security problem should Watchtower solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the CLI, report, policy, adapter, or integration you want.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CLI UX
+        - MCP scanning
+        - Capability Firewall
+        - Runtime attack graph
+        - Reports and evidence
+        - GitHub Action / CI
+        - Agent/client integration
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any existing tools, commands, or workflows you already tried.
