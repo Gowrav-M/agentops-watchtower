@@ -7,6 +7,7 @@
 - Added `protect` as a friendly shortcut over `protect-mcp` while keeping the advanced command fully available.
 - Added tracked slash-command examples and docs for `/watchtower-check`, `/watchtower-protect`, and `/watchtower-report`.
 - Updated README quick start so simple commands come first without hiding CI and power-user workflows.
+- Reused `check` descriptor scan and config inventory results when building attack-graph context to avoid duplicate parsing and artifact writes.
 
 ## 1.4.0 - 2026-05-28
 
