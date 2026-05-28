@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { createAdmissionReport, type AdmissionCheck } from "./core/admission.js";
@@ -22,6 +22,7 @@ import { importTraceFile } from "./core/importer.js";
 import { compareMcpBaseline, createMcpBaseline, readMcpBaselineFile } from "./core/mcpBaseline.js";
 import { createMcpGateReport } from "./core/mcpGate.js";
 import { discoverMcpConfigCandidates, explicitMcpConfigCandidates, inventoryMcpConfigFiles } from "./core/mcpInventory.js";
+import { createMcpProtection, restoreMcpProtection, type McpProtectionManifest } from "./core/mcpProtect.js";
 import { createMcpProxyAuditReport, createMcpProxyState, runStdioMcpProxy } from "./core/mcpProxy.js";
 import { scanMcpDescriptorFile, type McpScanOptions } from "./core/mcpScanner.js";
 import { exportOtelSpans } from "./core/otelExporter.js";
@@ -463,6 +464,79 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
     );
 
   program
+    .command("protect-mcp")
+    .requiredOption("-c, --config <config>", "MCP client JSON config to protect.")
+    .requiredOption("-s, --server <server>", "MCP server name to wrap with the Watchtower proxy.")
+    .option("-o, --out <out>", "Protected config output path. Defaults to .watchtower/protected/<config>.protected.json.")
+    .option("--in-place", "Modify the original config after writing a backup and rollback manifest.")
+    .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to pass through to proxy-mcp.")
+    .option("-b, --baseline <baseline>", "Watchtower MCP baseline file to pass through to proxy-mcp.")
+    .option("--fail-on <severity>", "Proxy policy threshold to pass through to proxy-mcp.")
+    .option("--package <packageSpec>", "npm package spec used in the protected npx wrapper.")
+    .description("Create a protected MCP client config that routes one server through the Watchtower proxy.")
+    .action(
+      async (options: {
+        config: string;
+        server: string;
+        out?: string;
+        inPlace?: boolean;
+        descriptor?: string;
+        baseline?: string;
+        failOn?: string;
+        package?: string;
+      }) => {
+        const paths = await ensureWatchtowerDirs(ctx.cwd);
+        const configPath = resolve(ctx.cwd, options.config);
+        if (extname(configPath).toLowerCase() !== ".json") {
+          throw new Error("protect-mcp currently supports JSON MCP configs.");
+        }
+        const rawConfig = JSON.parse(await readFile(configPath, "utf8")) as unknown;
+        const protectionPaths = getMcpProtectionPaths(ctx.cwd, paths, configPath, options.out, options.inPlace === true);
+        const packageSpec = options.package ?? `agentops-watchtower@${readPackageVersion()}`;
+        const failOn = parseSeverityOption(options.failOn);
+        const descriptorPath = options.descriptor === undefined ? undefined : resolve(ctx.cwd, options.descriptor);
+        const baselinePath = options.baseline === undefined ? undefined : resolve(ctx.cwd, options.baseline);
+        const protection = createMcpProtection(rawConfig, {
+          serverName: options.server,
+          originalConfigPath: configPath,
+          protectedConfigPath: protectionPaths.protectedConfigPath,
+          ...(protectionPaths.backupConfigPath === undefined ? {} : { backupConfigPath: protectionPaths.backupConfigPath }),
+          packageSpec,
+          ...(descriptorPath === undefined ? {} : { descriptorPath }),
+          ...(baselinePath === undefined ? {} : { baselinePath }),
+          ...(failOn === undefined ? {} : { failOn })
+        });
+
+        if (protectionPaths.backupConfigPath !== undefined) {
+          await writeJsonFile(protectionPaths.backupConfigPath, rawConfig);
+          ctx.stdout(`Backup written to ${protectionPaths.backupConfigPath}`);
+        }
+        await mkdir(dirname(protectionPaths.protectedConfigPath), { recursive: true });
+        await writeJsonFile(protectionPaths.protectedConfigPath, protection.protectedConfig);
+        await writeJsonFile(protectionPaths.manifestPath, protection.manifest);
+        ctx.stdout(`Protected config written to ${protectionPaths.protectedConfigPath}`);
+        ctx.stdout(`Protection manifest written to ${protectionPaths.manifestPath}`);
+      }
+    );
+
+  program
+    .command("unprotect-mcp")
+    .requiredOption("-c, --config <config>", "Protected MCP client JSON config to restore.")
+    .option("--manifest <manifest>", "Protection manifest path. Defaults to .watchtower/protected/<config>.protection.json.")
+    .description("Restore an MCP server from a Watchtower protection manifest.")
+    .action(async (options: { config: string; manifest?: string }) => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      const configPath = resolve(ctx.cwd, options.config);
+      const protectionPaths = getMcpProtectionPaths(ctx.cwd, paths, configPath, undefined, true);
+      const manifestPath = options.manifest === undefined ? protectionPaths.manifestPath : resolve(ctx.cwd, options.manifest);
+      const config = JSON.parse(await readFile(configPath, "utf8")) as unknown;
+      const manifest = parseMcpProtectionManifest(JSON.parse(await readFile(manifestPath, "utf8")) as unknown);
+      const restored = restoreMcpProtection(config, manifest);
+      await writeJsonFile(configPath, restored);
+      ctx.stdout(`Restored MCP config ${configPath}`);
+    });
+
+  program
     .command("agent-bom")
     .requiredOption("-c, --config <config...>", "MCP client config file(s) to include in the Agent Bill of Materials.")
     .option("-d, --descriptor <descriptor>", "MCP descriptor JSON to include as tool inventory.")
@@ -805,6 +879,106 @@ function bundledPath(...segments: string[]): string {
 function sourceUri(cwd: string, path: string): string {
   const relativePath = relative(cwd, path);
   return (relativePath.startsWith("..") ? path : relativePath).replaceAll("\\", "/");
+}
+
+interface McpProtectionFilePaths {
+  protectedConfigPath: string;
+  manifestPath: string;
+  backupConfigPath?: string;
+}
+
+function getMcpProtectionPaths(
+  cwd: string,
+  paths: ReturnType<typeof getWatchtowerPaths>,
+  configPath: string,
+  out: string | undefined,
+  inPlace: boolean
+): McpProtectionFilePaths {
+  const extension = extname(configPath);
+  const outputExtension = extension.length === 0 ? ".json" : extension;
+  const stem = basename(configPath, extension);
+  const protectedConfigPath = inPlace
+    ? configPath
+    : resolve(cwd, out ?? join(paths.protectedDir, `${stem}.protected${outputExtension}`));
+  const manifestPath = join(paths.protectedDir, `${stem}.protection.json`);
+  if (!inPlace) {
+    return { protectedConfigPath, manifestPath };
+  }
+  return {
+    protectedConfigPath,
+    manifestPath,
+    backupConfigPath: join(paths.protectedDir, `${stem}.backup${outputExtension}`)
+  };
+}
+
+function parseMcpProtectionManifest(value: unknown): McpProtectionManifest {
+  if (!isPlainRecord(value)) {
+    throw new Error("Invalid MCP protection manifest: expected a JSON object.");
+  }
+  if (value["schemaVersion"] !== 1) {
+    throw new Error("Invalid MCP protection manifest: schemaVersion must be 1.");
+  }
+  const mode = value["mode"];
+  if (mode !== "copy" && mode !== "in-place") {
+    throw new Error("Invalid MCP protection manifest: mode must be copy or in-place.");
+  }
+  const originalServer = value["originalServer"];
+  const protectedServer = value["protectedServer"];
+  if (!isPlainRecord(originalServer) || !isPlainRecord(protectedServer)) {
+    throw new Error("Invalid MCP protection manifest: server entries must be JSON objects.");
+  }
+
+  const manifest: McpProtectionManifest = {
+    schemaVersion: 1,
+    protectedAt: requireStringField(value, "protectedAt"),
+    mode,
+    serverName: requireStringField(value, "serverName"),
+    originalConfigPath: requireStringField(value, "originalConfigPath"),
+    protectedConfigPath: requireStringField(value, "protectedConfigPath"),
+    packageSpec: requireStringField(value, "packageSpec"),
+    originalServer,
+    protectedServer
+  };
+  const backupConfigPath = optionalStringField(value, "backupConfigPath");
+  const descriptorPath = optionalStringField(value, "descriptorPath");
+  const baselinePath = optionalStringField(value, "baselinePath");
+  const failOn = optionalStringField(value, "failOn");
+  if (backupConfigPath !== undefined) {
+    manifest.backupConfigPath = backupConfigPath;
+  }
+  if (descriptorPath !== undefined) {
+    manifest.descriptorPath = descriptorPath;
+  }
+  if (baselinePath !== undefined) {
+    manifest.baselinePath = baselinePath;
+  }
+  if (failOn !== undefined) {
+    manifest.failOn = failOn;
+  }
+  return manifest;
+}
+
+function requireStringField(record: Record<string, unknown>, field: string): string {
+  const value = record[field];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`Invalid MCP protection manifest: ${field} must be a string.`);
+  }
+  return value;
+}
+
+function optionalStringField(record: Record<string, unknown>, field: string): string | undefined {
+  const value = record[field];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`Invalid MCP protection manifest: ${field} must be a string when present.`);
+  }
+  return value;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 async function existingEvidenceArtifacts(paths: ReturnType<typeof getWatchtowerPaths>): Promise<EvidenceArtifactInput[]> {

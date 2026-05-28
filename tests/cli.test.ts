@@ -267,6 +267,72 @@ describe("cli", () => {
     expect(audit).toContain("\"serverName\": \"localDocs\"");
   });
 
+  it("protect-mcp writes a protected config copy and manifest without modifying the original", async () => {
+    const cwd = await makeTempDir();
+    const configPath = join(cwd, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          localDocs: {
+            command: "node",
+            args: ["docs-server.mjs"]
+          }
+        }
+      }),
+      "utf8"
+    );
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(["node", "watchtower", "protect-mcp", "--config", configPath, "--server", "localDocs"], {
+      from: "node"
+    });
+
+    const protectedConfig = await readFile(join(cwd, ".watchtower", "protected", "mcp.protected.json"), "utf8");
+    const manifest = await readFile(join(cwd, ".watchtower", "protected", "mcp.protection.json"), "utf8");
+    const original = await readFile(configPath, "utf8");
+    expect(output.join("\n")).toContain("Protected config written");
+    expect(protectedConfig).toContain("agentops-watchtower@1.3.0");
+    expect(protectedConfig).toContain("proxy-mcp");
+    expect(manifest).toContain("\"mode\": \"copy\"");
+    expect(original).toContain("docs-server.mjs");
+    expect(original).not.toContain("proxy-mcp");
+  });
+
+  it("unprotect-mcp restores an in-place protected config from its manifest", async () => {
+    const cwd = await makeTempDir();
+    const configPath = join(cwd, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          localDocs: {
+            command: "node",
+            args: ["docs-server.mjs"]
+          }
+        }
+      }),
+      "utf8"
+    );
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(["node", "watchtower", "protect-mcp", "--config", configPath, "--server", "localDocs", "--in-place"], {
+      from: "node"
+    });
+    expect(await readFile(configPath, "utf8")).toContain("proxy-mcp");
+
+    await cli.parseAsync(["node", "watchtower", "unprotect-mcp", "--config", configPath], {
+      from: "node"
+    });
+
+    const restored = await readFile(configPath, "utf8");
+    expect(restored).toContain("docs-server.mjs");
+    expect(restored).not.toContain("proxy-mcp");
+    expect(output.join("\n")).toContain("Restored MCP config");
+  });
+
   it("agent-bom writes JSON, Markdown, and CycloneDX inventory artifacts", async () => {
     const cwd = await makeTempDir();
     const cli = buildCli({ cwd, stdout: () => undefined, stderr: () => undefined });

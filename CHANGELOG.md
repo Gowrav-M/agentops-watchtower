@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 - 2026-05-28
+
+- Added `protect-mcp` to generate protected MCP client config copies that route one server through `proxy-mcp`.
+- Added `unprotect-mcp` rollback from protection manifests.
+- Added in-place protection with backup configs to avoid recursive proxy launches.
+- Added MCP protection docs, examples, tests, and package keywords.
+
 ## 1.2.0 - 2026-05-28
 
 - Added `proxy-mcp` for stdio MCP runtime policy enforcement.

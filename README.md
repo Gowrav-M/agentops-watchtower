@@ -66,6 +66,8 @@ agentops-watchtower inventory-mcp
 agentops-watchtower admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json
 agentops-watchtower gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json
 agentops-watchtower proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run
+agentops-watchtower protect-mcp --config examples/mcp/stdio-client-config.json --server local-echo
+agentops-watchtower unprotect-mcp --config .mcp.json
 agentops-watchtower agent-bom --config examples/mcp/safe-client-config.json --descriptor examples/mcp/safe-tools.json --cyclonedx
 agentops-watchtower attest-mcp --subject safe-docs --private-key private.pem --key-id local-reviewer
 agentops-watchtower verify-attestation --public-key public.pem
@@ -90,6 +92,8 @@ agentops-watchtower doctor
 | `admit-mcp` | Combines inventory, descriptor scan, and baseline drift into an allow/review/deny decision. |
 | `gate-mcp` | Preflights one configured MCP server and blocks unsafe launch plans. |
 | `proxy-mcp` | Runs a local stdio MCP server behind runtime policy enforcement and audit logging. |
+| `protect-mcp` | Generates a protected MCP config that routes one server through `proxy-mcp`. |
+| `unprotect-mcp` | Restores an in-place protected MCP config from its rollback manifest. |
 | `agent-bom` | Exports an Agent Bill of Materials for MCP configs, servers, tools, and findings. |
 | `attest-mcp` | Creates a tamper-evident local evidence bundle and can sign it with Ed25519. |
 | `verify-attestation` | Verifies evidence bundle integrity, artifact hashes, and optional signatures. |
@@ -127,6 +131,7 @@ npx agentops-watchtower inventory-mcp --fail-on high
 npx agentops-watchtower admit-mcp --descriptor examples/mcp/risky-tools.json --config examples/mcp/sample-client-config.json --fail-on high
 npx agentops-watchtower gate-mcp --config examples/mcp/sample-client-config.json --server review-this-installer --fail-on high
 npx agentops-watchtower proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run --fail-on high
+npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json
 npx agentops-watchtower agent-bom --config examples/mcp/sample-client-config.json --descriptor examples/mcp/risky-tools.json --fail-on high
 npx agentops-watchtower analyze-run --trace examples/traces/source-to-sink.jsonl --fail-on high
 ```
@@ -259,6 +264,33 @@ Watchtower writes:
 The proxy intercepts MCP JSON-RPC `tools/call` messages, blocks direct destructive or command-execution tools under the default policy, and uses the runtime attack graph to stop chains such as `read_secret -> send_email` or prompt-injected web content followed by shell execution.
 
 See [docs/mcp-proxy.md](docs/mcp-proxy.md).
+
+## MCP Protect Mode
+
+Wrap an existing MCP client config without hand-editing JSON:
+
+```bash
+npx agentops-watchtower protect-mcp \
+  --config .mcp.json \
+  --server github \
+  --descriptor mcp-tools.json
+```
+
+By default this is non-destructive. Watchtower writes:
+
+```text
+.watchtower/protected/.mcp.protected.json
+.watchtower/protected/.mcp.protection.json
+```
+
+Use the protected copy in Codex, Claude Code, Cursor, or another MCP client when you want that one server routed through the Watchtower proxy. If you need direct modification, `--in-place` writes a backup first and makes the proxy read from that backup:
+
+```bash
+npx agentops-watchtower protect-mcp --config .mcp.json --server github --in-place
+npx agentops-watchtower unprotect-mcp --config .mcp.json
+```
+
+See [docs/mcp-protect.md](docs/mcp-protect.md).
 
 ## Agent Bill of Materials
 

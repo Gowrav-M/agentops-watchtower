@@ -27,6 +27,7 @@ npm run dev -- agent-bom --config examples/mcp/safe-client-config.json --descrip
 npm run dev -- admit-mcp --descriptor examples/mcp/safe-tools.json --config examples/mcp/safe-client-config.json --sarif
 npm run dev -- gate-mcp --config examples/mcp/safe-client-config.json --server safe-docs --descriptor examples/mcp/safe-tools.json --sarif
 npm run dev -- proxy-mcp --config examples/mcp/stdio-client-config.json --server local-echo --dry-run
+npm run dev -- protect-mcp --config examples/mcp/stdio-client-config.json --server local-echo
 npm run dev -- analyze-run --trace examples/traces/source-to-sink.jsonl --sarif
 npm run dev -- attest-mcp --subject safe-docs --private-key private.pem --key-id local-reviewer
 npm run dev -- verify-attestation --public-key public.pem

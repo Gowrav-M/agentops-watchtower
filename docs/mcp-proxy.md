@@ -29,6 +29,12 @@ Output:
 .watchtower/reports/mcp-proxy-audit.json
 ```
 
+To insert the proxy into a real MCP client config without manual JSON edits, use `protect-mcp`:
+
+```bash
+npx agentops-watchtower protect-mcp --config .mcp.json --server github --descriptor mcp-tools.json
+```
+
 ## What It Blocks
 
 The v1.2 proxy intercepts stdio JSON-RPC messages and evaluates `tools/call` before forwarding them. It can block:

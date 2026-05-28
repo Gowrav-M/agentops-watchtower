@@ -8,6 +8,7 @@ AgentOps Watchtower is now focused on adoption, runtime control, and broader age
 - More agent transcript adapters: Codex, Claude Code, Cursor, OpenCode, OpenHands, and Gemini CLI.
 - Better PR summaries from AgentBOM, admission, runtime graph, and SARIF results.
 - Proxy policy presets for common MCP server classes.
+- Bulk `protect-mcp` adoption helpers for teams with many MCP client configs.
 
 ## Next Breakthrough
 
