@@ -44,38 +44,49 @@ Current industry guidance points in the same direction:
 
 ## Quick Start
 
-Pick the path that matches what you want to prove.
+Start with the simple path. It installs local Watchtower state, writes slash-command templates, creates a starter MCP scan, and generates a least-privilege firewall policy.
 
-### 1. Run The Demo
+### 1. Setup
 
 ```bash
-npx agentops-watchtower demo
+npx agentops-watchtower setup
 ```
 
 Expected output:
 
 ```text
-Demo complete. Risk score: 100.
-Open .watchtower/reports/watchtower-report.md or .watchtower/reports/watchtower-report.html.
+Setup complete. Created <project>/.watchtower/config.json
+Wrote MCP scan to <project>/.watchtower/reports/mcp-scan.json
+Wrote firewall policy to <project>/.watchtower/firewall.json
+Wrote 3 slash-command templates to <project>/.watchtower/slash-commands
 ```
 
-### 2. Scan An MCP Server
+### 2. Check
 
 ```bash
-npx agentops-watchtower scan-mcp examples/mcp/risky-tools.json --sarif
-npx agentops-watchtower report --mcp examples/mcp/risky-tools.json --analyze
+npx agentops-watchtower check \
+  --descriptor examples/mcp/safe-tools.json \
+  --trace examples/traces/firewall-violation.jsonl \
+  --firewall examples/firewall/least-privilege.json
 ```
 
-### 3. Install Least-Privilege Runtime Policy
+`check` is the one-command assessment: descriptor scan, optional config inventory, runtime attack graph, optional firewall replay, Markdown/HTML/JSON report, and optional SARIF.
+
+### 3. Protect
 
 ```bash
-npx agentops-watchtower firewall init --descriptor mcp-tools.json
-npx agentops-watchtower firewall simulate --config .watchtower/firewall.json --trace examples/traces/firewall-violation.jsonl
-npx agentops-watchtower protect-mcp \
+npx agentops-watchtower protect \
   --config .mcp.json \
   --server github \
-  --descriptor mcp-tools.json \
   --firewall .watchtower/firewall.json
+```
+
+`protect` is the friendly shortcut. The full `protect-mcp`, `proxy-mcp`, `firewall`, `scan-mcp`, `analyze-run`, `agent-bom`, SARIF, OTel, and attestation commands remain available for CI and power users.
+
+Run the full demo at any time:
+
+```bash
+npx agentops-watchtower demo
 ```
 
 Use it in GitHub Actions:
@@ -94,6 +105,8 @@ No paid API is required. No trace data leaves your machine.
 
 | Layer | Command | Artifact |
 | --- | --- | --- |
+| Simple onboarding | `setup` | `.watchtower/config.json`, `.watchtower/firewall.json`, `.watchtower/slash-commands/*` |
+| One-command assessment | `check` | Scan, attack graph, firewall, SARIF, and report artifacts as requested |
 | Black box recorder | `import`, `demo` | `.watchtower/runs/runs.jsonl` |
 | MCP descriptor scanner | `scan-mcp` | `.watchtower/reports/mcp-scan.json` |
 | Config and shadow MCP inventory | `inventory-mcp` | `.watchtower/reports/mcp-inventory.json` |
@@ -101,6 +114,7 @@ No paid API is required. No trace data leaves your machine.
 | Admission and launch policy | `admit-mcp`, `gate-mcp` | `.watchtower/reports/mcp-admission.json`, `mcp-gate.json` |
 | Capability Firewall | `firewall init`, `firewall simulate` | `.watchtower/firewall.json`, `.watchtower/reports/firewall-report.json` |
 | Runtime prevention | `proxy-mcp`, `protect-mcp` | `.watchtower/reports/mcp-proxy-audit.json` |
+| Friendly protection shortcut | `protect` | `.watchtower/protected/*.protected.json`, `.watchtower/protected/*.protection.json` |
 | Runtime forensics | `analyze-run` | `.watchtower/reports/attack-graph.json` |
 | Governance inventory | `agent-bom --cyclonedx` | `.watchtower/reports/agent-bom.json`, `agent-bom.cdx.json` |
 | CI/security export | `scan-mcp --sarif` | `.watchtower/reports/watchtower.sarif` |
@@ -144,6 +158,9 @@ node dist/cli.js demo
 
 | Workflow | Commands |
 | --- | --- |
+| Install local project state and slash-command templates | `agentops-watchtower setup` |
+| Run the main assessment in one command | `agentops-watchtower check --descriptor mcp-tools.json --trace trace.jsonl --firewall .watchtower/firewall.json` |
+| Protect one MCP server with the friendly shortcut | `agentops-watchtower protect --config .mcp.json --server github --firewall .watchtower/firewall.json` |
 | Try the product | `agentops-watchtower demo` |
 | Scan risky MCP descriptors | `agentops-watchtower scan-mcp examples/mcp/risky-tools.json --sarif` |
 | Approve and detect descriptor drift | `baseline-mcp`, then `diff-mcp` |
@@ -159,11 +176,20 @@ node dist/cli.js demo
 
 See [examples/README.md](examples/README.md) for copy-paste runnable commands.
 
+### Slash Commands
+
+`setup` writes three local templates under `.watchtower/slash-commands/`: `/watchtower-check`, `/watchtower-protect`, and `/watchtower-report`. These are convenience prompts for Codex, Claude Code, Cursor-style workflows, or any agent client that can read repository command templates.
+
+Tracked examples live in [examples/slash-commands](examples/slash-commands/), and setup details live in [docs/slash-commands.md](docs/slash-commands.md). They do not replace the advanced CLI; they point back to it.
+
 ### Commands
 
 | Command | Purpose |
 | --- | --- |
 | `init` | Creates `.watchtower/` local config and storage folders. |
+| `setup` | Creates local config, starter MCP scan, firewall policy, and slash-command templates. |
+| `check` | Runs the combined scan, runtime attack graph, optional firewall replay, and report workflow. |
+| `protect` | Friendly shortcut for protecting one MCP server through the Watchtower proxy. |
 | `demo` | Runs the bundled trace and MCP descriptor examples. |
 | `import <trace>` | Imports JSONL, NDJSON, Markdown, or text transcripts into normalized local JSONL. |
 | `scan-mcp [descriptor]` | Scans MCP descriptors for risky annotations, missing schemas, sensitive inputs, weak descriptions, and tool poisoning. |
@@ -556,6 +582,7 @@ See [docs/research.md](docs/research.md) and [docs/industry-positioning.md](docs
 | Need | Start here |
 | --- | --- |
 | Architecture and data flow | [docs/architecture.md](docs/architecture.md) |
+| Simple setup and slash commands | [docs/slash-commands.md](docs/slash-commands.md) |
 | Capability Firewall | [docs/firewall.md](docs/firewall.md) |
 | Runtime proxy | [docs/mcp-proxy.md](docs/mcp-proxy.md) |
 | MCP protect mode | [docs/mcp-protect.md](docs/mcp-protect.md) |

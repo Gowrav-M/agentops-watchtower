@@ -30,6 +30,105 @@ describe("cli", () => {
     expect(output.join("\n")).toContain("Initialized");
   });
 
+  it("setup creates config, firewall policy, and slash-command templates without hiding advanced commands", async () => {
+    const cwd = await makeTempDir();
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: (line) => output.push(line) });
+
+    await cli.parseAsync(
+      ["node", "watchtower", "setup", "--descriptor", join(import.meta.dirname, "..", "examples", "mcp", "risky-tools.json")],
+      { from: "node" }
+    );
+
+    const config = await readFile(join(cwd, ".watchtower", "config.json"), "utf8");
+    const firewall = await readFile(join(cwd, ".watchtower", "firewall.json"), "utf8");
+    const slashCommand = await readFile(join(cwd, ".watchtower", "slash-commands", "watchtower-check.md"), "utf8");
+    expect(JSON.parse(config)).toMatchObject({ schemaVersion: 1, storage: "local-jsonl" });
+    expect(firewall).toContain("\"defaultDecision\": \"deny\"");
+    expect(slashCommand).toContain("/watchtower-check");
+    expect(slashCommand).toContain("agentops-watchtower check");
+    expect(output.join("\n")).toContain("Setup complete");
+    expect(output.join("\n")).toContain("Advanced commands remain available");
+    expect(output.join("\n")).toContain("scan-mcp");
+    expect(output.join("\n")).toContain("proxy-mcp");
+  });
+
+  it("check runs the combined assessment and still writes advanced artifacts", async () => {
+    const cwd = await makeTempDir();
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: (line) => output.push(line) });
+
+    await cli.parseAsync(
+      [
+        "node",
+        "watchtower",
+        "check",
+        "--descriptor",
+        join(import.meta.dirname, "..", "examples", "mcp", "safe-tools.json"),
+        "--trace",
+        join(import.meta.dirname, "..", "examples", "traces", "firewall-violation.jsonl"),
+        "--firewall",
+        join(import.meta.dirname, "..", "examples", "firewall", "least-privilege.json"),
+        "--fail-on",
+        "critical"
+      ],
+      { from: "node" }
+    );
+
+    const scan = await readFile(join(cwd, ".watchtower", "reports", "mcp-scan.json"), "utf8");
+    const firewall = await readFile(join(cwd, ".watchtower", "reports", "firewall-report.json"), "utf8");
+    const graph = await readFile(join(cwd, ".watchtower", "reports", "attack-graph.json"), "utf8");
+    const report = await readFile(join(cwd, ".watchtower", "reports", "watchtower-report.json"), "utf8");
+    expect(scan).toContain("\"findings\"");
+    expect(firewall).toContain("firewall.tool_call_denied");
+    expect(graph).toContain("runtime.blocked_action_bypass");
+    expect(report).toContain("runtime.blocked_action_bypass");
+    expect(output.join("\n")).toContain("Watchtower check complete");
+    expect(output.join("\n")).toContain("Advanced artifacts");
+  });
+
+  it("protect is a simple wrapper for protect-mcp and reports the advanced equivalent", async () => {
+    const cwd = await makeTempDir();
+    const configPath = join(cwd, "mcp.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        mcpServers: {
+          localDocs: {
+            command: "node",
+            args: ["docs-server.mjs"]
+          }
+        }
+      }),
+      "utf8"
+    );
+    const output: string[] = [];
+    const cli = buildCli({ cwd, stdout: (line) => output.push(line), stderr: () => undefined });
+
+    await cli.parseAsync(
+      [
+        "node",
+        "watchtower",
+        "protect",
+        "--config",
+        configPath,
+        "--server",
+        "localDocs",
+        "--firewall",
+        join(import.meta.dirname, "..", "examples", "firewall", "least-privilege.json")
+      ],
+      { from: "node" }
+    );
+
+    const protectedConfig = await readFile(join(cwd, ".watchtower", "protected", "mcp.protected.json"), "utf8");
+    const manifest = await readFile(join(cwd, ".watchtower", "protected", "mcp.protection.json"), "utf8");
+    expect(output.join("\n")).toContain("Protected config written");
+    expect(output.join("\n")).toContain("Advanced equivalent: agentops-watchtower protect-mcp");
+    expect(protectedConfig).toContain("agentops-watchtower@1.5.0");
+    expect(protectedConfig).toContain("proxy-mcp");
+    expect(manifest).toContain("\"firewallPath\"");
+  });
+
   it("demo generates markdown and html reports", async () => {
     const cwd = await makeTempDir();
     const output: string[] = [];
@@ -384,7 +483,7 @@ describe("cli", () => {
     const manifest = await readFile(join(cwd, ".watchtower", "protected", "mcp.protection.json"), "utf8");
     const original = await readFile(configPath, "utf8");
     expect(output.join("\n")).toContain("Protected config written");
-    expect(protectedConfig).toContain("agentops-watchtower@1.4.0");
+    expect(protectedConfig).toContain("agentops-watchtower@1.5.0");
     expect(protectedConfig).toContain("proxy-mcp");
     expect(manifest).toContain("\"mode\": \"copy\"");
     expect(original).toContain("docs-server.mjs");

@@ -9,6 +9,7 @@ export interface WatchtowerPaths {
   runsJsonl: string;
   baselinesDir: string;
   protectedDir: string;
+  slashCommandsDir: string;
   firewallConfigJson: string;
   mcpBaselineJson: string;
   reportsDir: string;
@@ -35,6 +36,7 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
   const runsDir = join(root, "runs");
   const baselinesDir = join(root, "baselines");
   const protectedDir = join(root, "protected");
+  const slashCommandsDir = join(root, "slash-commands");
   const reportsDir = join(root, "reports");
   return {
     root,
@@ -43,6 +45,7 @@ export function getWatchtowerPaths(cwd: string): WatchtowerPaths {
     runsJsonl: join(runsDir, "runs.jsonl"),
     baselinesDir,
     protectedDir,
+    slashCommandsDir,
     firewallConfigJson: join(root, "firewall.json"),
     mcpBaselineJson: join(baselinesDir, "mcp-tools.json"),
     reportsDir,
@@ -70,6 +73,7 @@ export async function ensureWatchtowerDirs(cwd: string): Promise<WatchtowerPaths
   await mkdir(paths.runsDir, { recursive: true });
   await mkdir(paths.baselinesDir, { recursive: true });
   await mkdir(paths.protectedDir, { recursive: true });
+  await mkdir(paths.slashCommandsDir, { recursive: true });
   await mkdir(paths.reportsDir, { recursive: true });
   return paths;
 }
