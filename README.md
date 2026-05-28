@@ -1,28 +1,61 @@
 # AgentOps Watchtower
 
-Local-first black box recorder, MCP safety scanner, and eval report generator for AI agent workflows.
+[![CI](https://github.com/Gowrav-M/agentops-watchtower/actions/workflows/ci.yml/badge.svg)](https://github.com/Gowrav-M/agentops-watchtower/actions/workflows/ci.yml)
+[![Node 22+](https://img.shields.io/badge/node-%3E%3D22-339933)](package.json)
+[![License MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Local first](https://img.shields.io/badge/local--first-no%20cloud%20required-111827)](#quick-start)
+[![MCP security](https://img.shields.io/badge/MCP-security%20%2B%20runtime%20policy-orange)](#mcp-runtime-proxy)
 
-AgentOps Watchtower is for developers using Codex, Claude Code, OpenCode, OpenClaw, Hermes Agent, Cursor, and MCP servers who need to answer one question quickly:
+Local-first black box recorder, MCP safety scanner, runtime policy proxy, and evidence generator for AI agent workflows.
 
-> What did the agent do, which tools were risky, and what should be fixed before this workflow is trusted?
+<p align="center">
+  <img src="docs/assets/watchtower-pipeline.svg" alt="AgentOps Watchtower pipeline: agent traces and MCP configs flow through local scanners, runtime gates, reports, SARIF, OTel, and signed evidence." width="920">
+</p>
 
-It is not another agent framework. It is an operations layer for agent runs: import traces, scan MCP tool descriptors, run deterministic evals, and generate reproducible Markdown, HTML, and JSON reports.
+AgentOps Watchtower is for developers using Codex, Claude Code, Cursor, OpenCode, OpenClaw, Hermes Agent, Gemini CLI, and MCP servers who need to answer one operational question:
+
+> What did the agent do, which tools were risky, and what proof can I attach before this workflow is trusted?
+
+It is not another agent framework. It is the safety and evidence layer around agent runs: import traces, inspect MCP tool surfaces, detect runtime attack paths, protect MCP configs, block unsafe stdio tool calls, and generate reproducible Markdown, HTML, JSON, SARIF, OTel-style, AgentBOM, and signed evidence artifacts.
+
+## Why Now
+
+Agent systems are moving from demos into developer workstations and CI. The new failure mode is not only "bad answer"; it is an agent chaining tools with local files, browser sessions, secrets, package runners, and external APIs.
+
+Current industry guidance points in the same direction:
+
+| Signal | What it means for builders | Watchtower response |
+| --- | --- | --- |
+| [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/) calls out secret exposure, tool poisoning, command execution, missing telemetry, and shadow MCP servers. | MCP metadata and local config are security surfaces. | `scan-mcp`, `inventory-mcp`, `baseline-mcp`, `agent-bom`, `attest-mcp`. |
+| [Microsoft indirect prompt injection guidance](https://learn.microsoft.com/en-us/security/zero-trust/sfi/defend-indirect-prompt-injection) recommends runtime monitoring, tool-chain analysis, plan drift detection, and least privilege. | Static checks are not enough; risky sequences matter. | `analyze-run`, `gate-mcp`, `proxy-mcp`, `protect-mcp`. |
+| [OpenTelemetry GenAI conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) define agent, model, event, metric, and MCP signals. | Agent observability needs portable machine-readable traces. | `export-otel` emits local GenAI/MCP-style span JSON. |
+| [MCP security guidance](https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices) highlights local server compromise and malicious startup commands. | Workstation config can be the first compromise point. | Config inventory, protected config wrappers, runtime proxy audit logs. |
 
 ## Quick Start
+
+Run the full local demo:
 
 ```bash
 npx agentops-watchtower demo
 ```
 
-Local development:
+Expected output:
 
-```bash
-npm install
-npm run build
-node dist/cli.js demo
+```text
+Demo complete. Risk score: 100.
+Open .watchtower/reports/watchtower-report.md or .watchtower/reports/watchtower-report.html.
 ```
 
-GitHub Actions:
+Protect one MCP server behind the runtime proxy without hand-editing JSON:
+
+```bash
+npx agentops-watchtower protect-mcp \
+  --config .mcp.json \
+  --server github \
+  --descriptor mcp-tools.json
+```
+
+Use it in GitHub Actions:
 
 ```yaml
 - uses: Gowrav-M/agentops-watchtower@v1
@@ -32,26 +65,54 @@ GitHub Actions:
     fail-on: high
 ```
 
-The demo writes local files under `.watchtower/`:
-
-- `.watchtower/runs/runs.jsonl`
-- `.watchtower/baselines/mcp-tools.json`
-- `.watchtower/reports/watchtower-report.md`
-- `.watchtower/reports/watchtower-report.html`
-- `.watchtower/reports/watchtower-report.json`
-- `.watchtower/reports/agent-bom.json`
-- `.watchtower/reports/agent-bom.md`
-- `.watchtower/reports/agent-bom.cdx.json`
-- `.watchtower/reports/mcp-scan.json`
-- `.watchtower/reports/mcp-inventory.json`
-- `.watchtower/reports/mcp-admission.json`
-- `.watchtower/reports/mcp-gate.json`
-- `.watchtower/reports/attack-graph.json`
-- `.watchtower/reports/otel-spans.json`
-- `.watchtower/reports/watchtower.sarif`
-- `.watchtower/reports/evidence-bundle.json`
-
 No paid API is required. No trace data leaves your machine.
+
+## What You Get
+
+| Layer | Command | Artifact |
+| --- | --- | --- |
+| Black box recorder | `import`, `demo` | `.watchtower/runs/runs.jsonl` |
+| MCP descriptor scanner | `scan-mcp` | `.watchtower/reports/mcp-scan.json` |
+| Config and shadow MCP inventory | `inventory-mcp` | `.watchtower/reports/mcp-inventory.json` |
+| Drift control | `baseline-mcp`, `diff-mcp` | `.watchtower/baselines/mcp-tools.json` |
+| Admission and launch policy | `admit-mcp`, `gate-mcp` | `.watchtower/reports/mcp-admission.json`, `mcp-gate.json` |
+| Runtime prevention | `proxy-mcp`, `protect-mcp` | `.watchtower/reports/mcp-proxy-audit.json` |
+| Runtime forensics | `analyze-run` | `.watchtower/reports/attack-graph.json` |
+| Governance inventory | `agent-bom --cyclonedx` | `.watchtower/reports/agent-bom.json`, `agent-bom.cdx.json` |
+| CI/security export | `scan-mcp --sarif` | `.watchtower/reports/watchtower.sarif` |
+| Observability export | `export-otel` | `.watchtower/reports/otel-spans.json` |
+| Audit evidence | `attest-mcp`, `verify-attestation` | `.watchtower/reports/evidence-bundle.json` |
+
+## System View
+
+```mermaid
+flowchart LR
+  A["Agent traces"] --> W["AgentOps Watchtower"]
+  C["MCP descriptors"] --> W
+  M["MCP client configs"] --> W
+  W --> S["Static risk scan"]
+  W --> G["Admission and gate"]
+  W --> P["Runtime proxy"]
+  W --> R["Attack graph"]
+  W --> B["AgentBOM"]
+  W --> E["Signed evidence"]
+  S --> O["Markdown, HTML, JSON"]
+  R --> O
+  B --> O
+  O --> CI["SARIF for GitHub Code Scanning"]
+  O --> OT["OTel-style spans"]
+```
+
+## Local Development
+
+```bash
+npm install
+npm run typecheck
+npm test
+npm run lint
+npm run build
+node dist/cli.js demo
+```
 
 ## CLI
 
@@ -426,22 +487,18 @@ AgentOps Watchtower focuses on the useful middle ground:
 - safer than raw transcript sharing,
 - easy to run in CI or locally.
 
-See [docs/research.md](docs/research.md) for the v0.3 research notes and repository signal.
+See [docs/research.md](docs/research.md) and [docs/industry-positioning.md](docs/industry-positioning.md) for the research notes and repository signal.
 
-## Development
+## Contributing And Security
 
-```bash
-npm install
-npm run typecheck
-npm test
-npm run lint
-npm run build
-node dist/cli.js demo
-```
+- Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Security policy: [SECURITY.md](SECURITY.md)
+- Architecture: [docs/architecture.md](docs/architecture.md)
+- Threat model: [docs/threat-model.md](docs/threat-model.md)
 
 ## Project Status
 
-This is v1.2: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, stdio MCP runtime proxy enforcement, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, GitHub Action support, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
+This is v1.3: local JSONL storage, deterministic evals, MCP descriptor scanning, MCP config inventory, AgentBOM export, MCP admission decisions, MCP preflight gate reports, stdio MCP runtime proxy enforcement, MCP protect/unprotect config wrapping, runtime attack graph analysis, signed tamper-evident evidence bundles, policy gates, GitHub Action support, tool-poisoning checks, MCP baseline drift detection, SARIF export, OpenTelemetry-style span export, and static reports. Planned next steps:
 
 - SQLite storage.
 - More agent transcript adapters.

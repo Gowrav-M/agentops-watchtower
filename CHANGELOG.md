@@ -6,6 +6,7 @@
 - Added `unprotect-mcp` rollback from protection manifests.
 - Added in-place protection with backup configs to avoid recursive proxy launches.
 - Added MCP protection docs, examples, tests, and package keywords.
+- Added visual README positioning, industry research notes, contributing guide, and security policy.
 
 ## 1.2.0 - 2026-05-28
 

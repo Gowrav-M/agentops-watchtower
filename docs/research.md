@@ -62,6 +62,21 @@ v0.9 adds AgentBOM export. Current guidance around shadow AI, OpenSSF AI supply-
 
 v1.0 adds signed evidence bundles. This closes the local audit loop: teams can prove which artifacts were reviewed, detect later mutation, and verify reviewer/key identity with Ed25519 signatures.
 
+v1.1 adds a packaged GitHub Action. This turns Watchtower from a local-only CLI into a reusable CI adoption path with scan, report, AgentBOM, admission, attack graph, and evidence output.
+
+v1.2 adds the stdio MCP runtime proxy. This moves Watchtower from detective control to preventive control for local MCP servers by blocking unsafe `tools/call` requests before the upstream server executes them.
+
+v1.3 adds MCP protect mode. This closes the adoption gap for the proxy: developers can generate a protected MCP client config or safely edit in place with a backup and rollback manifest.
+
+## Positioning Update - 2026-05-28
+
+The README and docs were updated to reflect a stronger public positioning:
+
+- "black box recorder + MCP safety firewall + evidence pack" is clearer than a long feature list;
+- top repositories in the category teach that fast adoption comes from visible quickstarts, strong examples, diagrams, and concrete workflows;
+- README structure now follows GitHub's recommended reader path: what it does, why it is useful, how to start, where to learn more, and how to contribute;
+- standards links are surfaced early so recruiters and security-minded developers understand the industrial relevance immediately.
+
 ## Source References
 
 - OpenTelemetry GenAI/MCP semantic conventions: https://opentelemetry.io/docs/specs/semconv/gen-ai/mcp/
@@ -69,5 +84,7 @@ v1.0 adds signed evidence bundles. This closes the local audit loop: teams can p
 - OWASP MCP Top 10: https://owasp.org/www-project-mcp-top-10/
 - GitHub SARIF upload docs: https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/integrate-with-existing-tools/uploading-a-sarif-file-to-github
 - Microsoft indirect prompt injection defense guidance: https://learn.microsoft.com/en-us/security/zero-trust/sfi/defend-indirect-prompt-injection
+- MCP security best practices: https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices
+- GitHub README guidance: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
 - CycloneDX specification overview: https://cyclonedx.org/specification/overview/
 - CycloneDX AI/ML-BOM capability: https://cyclonedx.org/capabilities/mlbom/

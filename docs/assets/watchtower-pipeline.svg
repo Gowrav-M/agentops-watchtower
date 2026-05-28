@@ -1,0 +1,49 @@
+<svg width="920" height="360" viewBox="0 0 920 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AgentOps Watchtower pipeline</title>
+  <desc id="desc">Agent traces and MCP configs flow into local Watchtower analysis, then produce reports, security exports, telemetry, and signed evidence.</desc>
+  <rect width="920" height="360" rx="22" fill="#0B1220"/>
+  <rect x="18" y="18" width="884" height="324" rx="18" fill="#111827" stroke="#334155"/>
+
+  <text x="44" y="58" fill="#F8FAFC" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="700">AgentOps Watchtower</text>
+  <text x="44" y="86" fill="#CBD5E1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Local black box recorder, MCP safety scanner, runtime proxy, and evidence bundle for coding agents</text>
+
+  <rect x="44" y="126" width="176" height="86" rx="12" fill="#172554" stroke="#3B82F6"/>
+  <text x="64" y="156" fill="#DBEAFE" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="700">Inputs</text>
+  <text x="64" y="181" fill="#BFDBFE" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">Agent traces</text>
+  <text x="64" y="199" fill="#BFDBFE" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">MCP descriptors</text>
+
+  <rect x="44" y="232" width="176" height="72" rx="12" fill="#1E1B4B" stroke="#8B5CF6"/>
+  <text x="64" y="262" fill="#EDE9FE" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="700">Config Surface</text>
+  <text x="64" y="287" fill="#DDD6FE" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">MCP client configs</text>
+
+  <path d="M228 169H298" stroke="#94A3B8" stroke-width="2"/>
+  <path d="M228 268H298" stroke="#94A3B8" stroke-width="2"/>
+  <path d="M290 161L302 169L290 177" stroke="#94A3B8" stroke-width="2"/>
+  <path d="M290 260L302 268L290 276" stroke="#94A3B8" stroke-width="2"/>
+
+  <rect x="304" y="112" width="264" height="208" rx="18" fill="#052E2B" stroke="#14B8A6"/>
+  <text x="332" y="146" fill="#CCFBF1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">Local Analysis Engine</text>
+  <rect x="332" y="166" width="92" height="34" rx="8" fill="#0F766E"/>
+  <text x="350" y="188" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Scan</text>
+  <rect x="438" y="166" width="92" height="34" rx="8" fill="#0F766E"/>
+  <text x="459" y="188" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Gate</text>
+  <rect x="332" y="214" width="92" height="34" rx="8" fill="#115E59"/>
+  <text x="350" y="236" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Proxy</text>
+  <rect x="438" y="214" width="92" height="34" rx="8" fill="#115E59"/>
+  <text x="452" y="236" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Attack graph</text>
+  <rect x="332" y="262" width="92" height="34" rx="8" fill="#134E4A"/>
+  <text x="349" y="284" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">AgentBOM</text>
+  <rect x="438" y="262" width="92" height="34" rx="8" fill="#134E4A"/>
+  <text x="457" y="284" fill="#ECFEFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">Evidence</text>
+
+  <path d="M576 216H646" stroke="#94A3B8" stroke-width="2"/>
+  <path d="M638 208L650 216L638 224" stroke="#94A3B8" stroke-width="2"/>
+
+  <rect x="654" y="112" width="222" height="208" rx="18" fill="#3B1D07" stroke="#F59E0B"/>
+  <text x="682" y="146" fill="#FEF3C7" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">Outputs</text>
+  <text x="682" y="176" fill="#FDE68A" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">Markdown / HTML / JSON</text>
+  <text x="682" y="201" fill="#FDE68A" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">SARIF for GitHub Code Scanning</text>
+  <text x="682" y="226" fill="#FDE68A" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">OTel-style GenAI spans</text>
+  <text x="682" y="251" fill="#FDE68A" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">CycloneDX AgentBOM</text>
+  <text x="682" y="276" fill="#FDE68A" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">Signed evidence bundle</text>
+</svg>

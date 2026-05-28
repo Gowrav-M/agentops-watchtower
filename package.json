@@ -12,7 +12,9 @@
     "docs",
     "action.yml",
     "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "ROADMAP.md",
+    "SECURITY.md",
     "watchtower.config.example.json",
     "README.md",
     "LICENSE"
