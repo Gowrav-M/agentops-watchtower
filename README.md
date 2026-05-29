@@ -7,7 +7,7 @@
 [![MCP security](https://img.shields.io/badge/MCP-security%20%2B%20runtime%20policy-orange)](#capability-firewall)
 [![GitHub Action](https://img.shields.io/badge/GitHub%20Action-ready-2563EB)](#github-action)
 
-Black box recorder and firewall for AI coding agents.
+Local-first AgentOps flight recorder and capability firewall for MCP-based coding agents with OpenTelemetry traces.
 
 Run one command to see what an agent did, which MCP tools were risky, which runtime chains looked unsafe, and what evidence you can attach before trusting the workflow.
 
@@ -35,6 +35,18 @@ AgentOps Watchtower is for developers using Codex, Claude Code, Cursor, OpenCode
 > What did the agent do, which tools were risky, and what proof can I attach before this workflow is trusted?
 
 It is not another agent framework. It is the safety and evidence layer around agent runs: import traces, inspect MCP tool surfaces, generate least-privilege firewall policies, detect runtime attack paths, protect MCP configs, block unsafe stdio tool calls, and generate reproducible Markdown, HTML, JSON, SARIF, OTel-style, AgentBOM, and signed evidence artifacts.
+
+## AgentSec Trilogy
+
+Watchtower is the runtime evidence layer in a local-first AgentSec pipeline:
+
+```text
+agent-cognicheck      test/red-team MCP tools and skills before approval
+agent-skillguard      approve, lock, passport, baseline, and package skills
+agentops-watchtower   monitor runtime behavior, enforce firewall policy, and preserve evidence
+```
+
+Feed Cognicheck risk signals and SkillGuard approval evidence into Watchtower reports to connect pre-deployment review with what agents actually did at runtime.
 
 ## See It In 30 Seconds
 

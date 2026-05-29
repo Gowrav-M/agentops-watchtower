@@ -1,7 +1,7 @@
 {
   "name": "agentops-watchtower",
   "version": "1.5.0",
-  "description": "Local-first black box recorder, MCP safety scanner, runtime Capability Firewall, and evidence generator for AI agent workflows.",
+  "description": "Local-first AgentOps flight recorder and capability firewall for MCP-based coding agents with OpenTelemetry traces.",
   "type": "module",
   "homepage": "https://github.com/Gowrav-M/agentops-watchtower#readme",
   "repository": {
@@ -44,6 +44,8 @@
     "mcp",
     "ai-agents",
     "observability",
+    "ai-monitoring",
+    "llm-observability",
     "evals",
     "security",
     "cli",
