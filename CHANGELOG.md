@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0 - 2026-05-30
+
+- Added `evidence` to emit normalized `agent.trust.evidence.v1` runtime evidence for Agent Trust Center.
+- Added a shared Agent Trust Suite diagram to the README.
+- Added trust evidence normalization tests.
+
 ## 1.5.0 - 2026-05-28
 
 - Added `setup` for one-command local onboarding with config, starter MCP scan, firewall policy, and slash-command templates.

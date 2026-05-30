@@ -124,7 +124,7 @@ describe("cli", () => {
     const manifest = await readFile(join(cwd, ".watchtower", "protected", "mcp.protection.json"), "utf8");
     expect(output.join("\n")).toContain("Protected config written");
     expect(output.join("\n")).toContain("Advanced equivalent: agentops-watchtower protect-mcp");
-    expect(protectedConfig).toContain("agentops-watchtower@1.5.0");
+    expect(protectedConfig).toContain("agentops-watchtower@1.6.0");
     expect(protectedConfig).toContain("proxy-mcp");
     expect(manifest).toContain("\"firewallPath\"");
   });
@@ -483,7 +483,7 @@ describe("cli", () => {
     const manifest = await readFile(join(cwd, ".watchtower", "protected", "mcp.protection.json"), "utf8");
     const original = await readFile(configPath, "utf8");
     expect(output.join("\n")).toContain("Protected config written");
-    expect(protectedConfig).toContain("agentops-watchtower@1.5.0");
+    expect(protectedConfig).toContain("agentops-watchtower@1.6.0");
     expect(protectedConfig).toContain("proxy-mcp");
     expect(manifest).toContain("\"mode\": \"copy\"");
     expect(original).toContain("docs-server.mjs");

@@ -32,6 +32,7 @@ import { createWatchtowerReport } from "./core/report.js";
 import { renderHtmlReport, renderMarkdownReport } from "./core/reportRenderer.js";
 import { exportSarif } from "./core/sarifExporter.js";
 import type { AgentRun, RiskFinding } from "./core/schemas.js";
+import { createWatchtowerTrustEvidence, trustEvidencePath } from "./core/trustEvidence.js";
 
 export interface CliContext {
   cwd: string;
@@ -890,6 +891,24 @@ export function buildCli(context: Partial<CliContext> = {}): Command {
       await writeReportFiles(paths, report, renderMarkdownReport(report), renderHtmlReport(report));
       ctx.stdout(`Demo complete. Risk score: ${report.summary.riskScore}.`);
       ctx.stdout(`Open ${paths.reportMarkdown} or ${paths.reportHtml}.`);
+    });
+
+  program
+    .command("evidence")
+    .description("Write normalized Agent Trust Center evidence from the latest Watchtower report.")
+    .action(async () => {
+      const paths = await ensureWatchtowerDirs(ctx.cwd);
+      if (!(await fileExists(paths.reportJson))) {
+        throw new Error("No Watchtower report found. Run agentops-watchtower demo or report first.");
+      }
+      const evidence = await createWatchtowerTrustEvidence({
+        paths,
+        version: readPackageVersion()
+      });
+      const outputPath = trustEvidencePath(paths);
+      await writeJsonFile(outputPath, evidence);
+      ctx.stdout(`Decision: ${evidence.decision.toUpperCase()}`);
+      ctx.stdout(`Trust evidence: ${outputPath}`);
     });
 
   program

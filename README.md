@@ -36,6 +36,21 @@ AgentOps Watchtower is for developers using Codex, Claude Code, Cursor, OpenCode
 
 It is not another agent framework. It is the safety and evidence layer around agent runs: import traces, inspect MCP tool surfaces, generate least-privilege firewall policies, detect runtime attack paths, protect MCP configs, block unsafe stdio tool calls, and generate reproducible Markdown, HTML, JSON, SARIF, OTel-style, AgentBOM, and signed evidence artifacts.
 
+## Agent Trust Suite
+
+```mermaid
+flowchart LR
+  A["agent-endpoint-doctor"] --> F["agent-trust-center"]
+  B["nim-doctor"] --> F
+  C["agent-cognicheck"] --> F
+  D["agent-skillguard"] --> F
+  E["agentops-watchtower"] --> F
+  F --> G["one trust report"]
+  F --> H["CI gate"]
+```
+
+Watchtower contributes runtime and MCP evidence to Agent Trust Center through `npx agentops-watchtower evidence`.
+
 ## AgentSec Trilogy
 
 Watchtower is the runtime evidence layer in a local-first AgentSec pipeline:

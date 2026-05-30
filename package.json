@@ -1,6 +1,6 @@
 {
   "name": "agentops-watchtower",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Local-first AgentOps flight recorder and capability firewall for MCP-based coding agents with OpenTelemetry traces.",
   "type": "module",
   "homepage": "https://github.com/Gowrav-M/agentops-watchtower#readme",
